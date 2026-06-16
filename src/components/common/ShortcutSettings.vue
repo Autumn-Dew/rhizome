@@ -97,7 +97,6 @@ const onKeydown = (e) => {
   if (!capturing.value) return
   e.preventDefault()
   e.stopPropagation()
-  const parts = e.code
   captureDisplay.value = comboLabel({
     code: e.code,
     ctrl: e.ctrlKey,

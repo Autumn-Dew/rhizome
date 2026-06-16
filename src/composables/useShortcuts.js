@@ -101,7 +101,6 @@ function syncElectronGlobal() {
 }
 
 export function useShortcuts(handlers) {
-  const windowHandler = () => window.electron?.minimize?.() // will be overridden
   const handlerMap = {
     togglePlay:   () => handlers.togglePlay?.(),
     prevSong:     () => handlers.prevSong?.(),

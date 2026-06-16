@@ -26,55 +26,6 @@ function parseLRC(t) {
 }
 
 // 直接从 FLAC 二进制读取 Vorbis Comment 中的 LYRICS 字段
-function readFlacVorbisLyrics(filePath) {
-    try {
-        var buf = require("fs").readFileSync(filePath)
-        console.log("[FLAC] file size:", buf.length, "header:", buf.toString("utf8",0,4))
-        if (buf.toString("utf8",0,4) !== "fLaC") { console.log("[FLAC] 不是有效FLAC文件"); return "" }
-        var offset = 4, lastBlock = false, blockCount = 0
-        while (!lastBlock && offset < buf.length - 4) {
-            blockCount++
-            var header = buf.readUInt32BE(offset)
-            lastBlock = (header >> 31) & 1
-            var blockType = header & 0x7F
-            var blockSize = buf.readUInt32BE(offset + 4) & 0x00FFFFFF
-            console.log("[FLAC] block", blockCount, "type:", blockType, "size:", blockSize, "last:", lastBlock)
-            if (blockType === 4 && blockSize > 0) {
-                console.log("[FLAC] 找到 Vorbis Comment 块, 数据偏移:", offset+8)
-                var raw = buf.slice(offset + 8, offset + 8 + blockSize)
-                var vendorLen = raw.readUInt32LE(0)
-                console.log("[FLAC] vendorLen:", vendorLen)
-                var pos = 4 + vendorLen
-                if (pos + 4 > raw.length) { console.log("[FLAC] raw too short"); break }
-                var commentCount = raw.readUInt32LE(pos)
-                console.log("[FLAC] commentCount:", commentCount)
-                pos += 4
-                for (var i = 0; i < commentCount && pos + 4 <= raw.length; i++) {
-                    var len = raw.readUInt32LE(pos)
-                    pos += 4
-                    if (pos + len > raw.length) { console.log("[FLAC] comment", i, "overflow"); break }
-                    var comment = raw.toString("utf8", pos, pos + len)
-                    pos += len
-                    var eq = comment.indexOf("=")
-                    if (eq > 0) {
-                        var key = comment.substring(0, eq).toUpperCase()
-                        var val = comment.substring(eq + 1)
-                        console.log("[FLAC] comment", i, "key:", key, "val前50:", val.substring(0,50))
-                        if (key === "LYRICS") {
-                            console.log("[FLAC] 找到 LYRICS! 长度:", val.length, "含[00:]:", val.indexOf("[00:") >= 0)
-                            if (val.indexOf("[00:") >= 0) return val
-                        }
-                    }
-                }
-                return "" // 只检查第一个 Vorbis Comment 块
-            }
-            offset += 4 + blockSize
-        }
-        console.log("[FLAC] 扫描完成，共", blockCount, "个块，未找到LYRICS")
-    } catch (e) { console.error("[FLAC] 读取失败:", e.message) }
-    return ""
-}
-
 async function extLyrics(fp, common, native, isFlac) {
     if (isFlac && native) {
         var ks = Object.keys(native)

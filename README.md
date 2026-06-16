@@ -57,7 +57,3 @@ rhizome/
 ├── desktop-lyrics.html
 └── package.json
 ```
-
-## License
-
-MIT

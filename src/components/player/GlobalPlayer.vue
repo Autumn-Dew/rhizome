@@ -74,7 +74,7 @@
 </template>
 
 <script setup>
-import {computed, ref, watch, onMounted, onUnmounted} from 'vue'
+import { computed, ref } from 'vue'
 import PlaybackControls from './PlaybackControls.vue'
 import ProgressBar from './ProgressBar.vue'
 import VolumeControl from './VolumeControl.vue'
