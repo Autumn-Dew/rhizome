@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rhizome · 音乐播放器</title>
+    <style>
+      /* ====== Splash Screen ====== */
+      #rhizome-splash {
+        position: fixed; inset: 0; z-index: 99999;
+        background: #121212;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+      }
+      #rhizome-splash.hidden {
+        opacity: 0;
+        transition: opacity 0.5s ease 0.2s;
+        pointer-events: none;
+      }
+
+      /* 四角装饰 — 歌词取景框同款 */
+      .splash-corner {
+        position: fixed;
+        left: 0; top: 0;
+        width: 32px; height: 32px;
+        z-index: 100000;
+        border-color: rgba(255,255,255,0.7);
+        border-style: solid;
+        pointer-events: none;
+        will-change: transform;
+      }
+      .corner-tl {
+        border-width: 2px 0 0 2px;
+        transform: translate(calc(50vw - 16px), calc(50vh - 16px)) scale(1.3);
+        animation: corner-tl 0.75s 0.08s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+      }
+      .corner-tr {
+        border-width: 2px 2px 0 0;
+        transform: translate(calc(50vw - 16px), calc(50vh - 16px)) scale(1.3);
+        animation: corner-tr 0.75s 0.08s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+      }
+      .corner-bl {
+        border-width: 0 0 2px 2px;
+        transform: translate(calc(50vw - 16px), calc(50vh - 16px)) scale(1.3);
+        animation: corner-bl 0.75s 0.08s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+      }
+      .corner-br {
+        border-width: 0 2px 2px 0;
+        transform: translate(calc(50vw - 16px), calc(50vh - 16px)) scale(1.3);
+        animation: corner-br 0.75s 0.08s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+      }
+
+      @keyframes corner-tl {
+        0%   { transform: translate(calc(50vw - 16px), calc(50vh - 16px)) scale(1.3); opacity: 0.6; }
+        100% { transform: translate(28px, 28px) scale(1); opacity: 1; }
+      }
+      @keyframes corner-tr {
+        0%   { transform: translate(calc(50vw - 16px), calc(50vh - 16px)) scale(1.3); opacity: 0.6; }
+        100% { transform: translate(calc(100vw - 60px), 28px) scale(1); opacity: 1; }
+      }
+      @keyframes corner-bl {
+        0%   { transform: translate(calc(50vw - 16px), calc(50vh - 16px)) scale(1.3); opacity: 0.6; }
+        100% { transform: translate(28px, calc(100vh - 60px)) scale(1); opacity: 1; }
+      }
+      @keyframes corner-br {
+        0%   { transform: translate(calc(50vw - 16px), calc(50vh - 16px)) scale(1.3); opacity: 0.6; }
+        100% { transform: translate(calc(100vw - 60px), calc(100vh - 60px)) scale(1); opacity: 1; }
+      }
+
+      /* 方形脉冲 — 比例跟随窗口 */
+      .splash-pulse {
+        position: fixed;
+        left: 50%; top: 50%;
+        width: 4vw; height: 4vh;
+        border: 1.5px solid rgba(255,255,255,0.4);
+        transform: translate(-50%, -50%) scale(0.2);
+        opacity: 0;
+        pointer-events: none;
+        z-index: 99999;
+        animation: pulse-out 0.75s 0.02s cubic-bezier(0.3, 0, 0.7, 1) forwards;
+      }
+      @keyframes pulse-out {
+        0%   { transform: translate(-50%, -50%) scale(0.2); opacity: 0.75; }
+        100% { transform: translate(-50%, -50%) scale(42); opacity: 0; }
+      }
+
+      /* Logo 光晕 + 文字 */
+      #rhizome-splash .splash-logo-wrap {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      #rhizome-splash .splash-glow {
+        position: absolute;
+        top: 50%; left: 50%;
+        width: 200px; height: 200px;
+        transform: translate(-50%, -50%);
+        background: radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%);
+        opacity: 0;
+        animation: glow-in 0.8s ease 0.5s forwards;
+      }
+      @keyframes glow-in {
+        to { opacity: 1; }
+      }
+      #rhizome-splash .splash-logo {
+        position: relative;
+        font-size: 48px; font-weight: 700;
+        font-family: "Microsoft YaHei", sans-serif;
+        color: #ffffff;
+        letter-spacing: 8px;
+        opacity: 0;
+        transform: scale(0.6);
+        animation: logo-in 0.5s cubic-bezier(0.2, 0, 0.2, 1) 0.4s forwards;
+      }
+      #rhizome-splash .splash-sub {
+        position: relative;
+        margin-top: 14px;
+        font-size: 13px;
+        color: rgba(255,255,255,0.3);
+        font-family: "Microsoft YaHei", sans-serif;
+        letter-spacing: 3px;
+        opacity: 0;
+        animation: sub-in 0.4s ease 0.55s forwards;
+      }
+      @keyframes logo-in {
+        from { opacity: 0; transform: scale(0.6); }
+        to   { opacity: 1; transform: scale(1); }
+      }
+      @keyframes sub-in {
+        from { opacity: 0; transform: translateY(6px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="rhizome-splash">
+      <div class="splash-pulse"></div>
+      <div class="splash-corner corner-tl"></div>
+      <div class="splash-corner corner-tr"></div>
+      <div class="splash-corner corner-bl"></div>
+      <div class="splash-corner corner-br"></div>
+      <div class="splash-logo-wrap">
+        <div class="splash-glow"></div>
+        <div class="splash-logo">Rhizome</div>
+        <div class="splash-sub">简约的本地音乐播放器</div>
+      </div>
+    </div>
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

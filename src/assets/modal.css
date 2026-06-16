@@ -1,0 +1,71 @@
+/* 全局统一弹窗 · 完全对齐项目极简黑白风 + 同款按钮动效 */
+.rc-custom-modal {
+    --modal-bg: #ffffff;
+    --modal-text: #000000;
+    --modal-border: #000000;
+    --btn-normal-bg: #f8f8f8;
+    --btn-normal-color: #000000;
+    --btn-active-bg: #000000;
+    --btn-active-color: #ffffff;
+    --scale-hover: 1.05;
+    --translate-hover: -1px;
+}
+
+/* 深色主题自动切换 */
+html.dark .rc-custom-modal {
+    --modal-bg: #2c2c2c;
+    --modal-text: #ffffff;
+    --modal-border: #ffffff;
+    --btn-normal-bg: #292929;
+    --btn-normal-color: #ffffff;
+    --btn-active-bg: #ffffff;
+    --btn-active-color: #000000;
+}
+
+/* 弹窗主体样式 */
+.rc-custom-modal .el-message-box {
+    background: var(--modal-bg) !important;
+    border: 2px solid var(--modal-border) !important;
+    border-radius: 0 !important;
+    color: var(--modal-text) !important;
+}
+.rc-custom-modal .el-message-box__header {
+    border-bottom: 1px solid var(--modal-border) !important;
+}
+.rc-custom-modal .el-message-box__title {
+    font-weight: bold !important;
+    color: var(--modal-text) !important;
+}
+.rc-custom-modal .el-message-box__content {
+    color: var(--modal-text) !important;
+}
+.rc-custom-modal .el-message-box__btns {
+    border-top: 1px solid var(--modal-border) !important;
+}
+
+/* 普通按钮（稍后登录）→ 和侧边栏默认按钮一致 */
+.rc-custom-modal .el-button:not(.el-button--primary) {
+    border-radius: 0 !important;
+    border: 2px solid var(--modal-border) !important;
+    background: var(--btn-normal-bg) !important;
+    color: var(--btn-normal-color) !important;
+    transition: all 0.2s ease !important;
+}
+.rc-custom-modal .el-button:not(.el-button--primary):hover {
+    transform: translateY(var(--translate-hover)) scale(var(--scale-hover)) !important;
+    background: var(--btn-active-bg) !important;
+    color: var(--btn-active-color) !important;
+}
+
+/* 主按钮（去登录）→ 和侧边栏active选中按钮一致 */
+.rc-custom-modal .el-button--primary {
+    border-radius: 0 !important;
+    border: 2px solid var(--modal-border) !important;
+    background: var(--btn-active-bg) !important;
+    color: var(--btn-active-color) !important;
+    transition: all 0.2s ease !important;
+}
+.rc-custom-modal .el-button--primary:hover {
+    transform: translateY(var(--translate-hover)) scale(var(--scale-hover)) !important;
+    opacity: 0.9 !important;
+}
