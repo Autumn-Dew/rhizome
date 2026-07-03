@@ -19,7 +19,6 @@
       <button class="tl-nav-btn" @click="goPrev" title="上一段">←</button>
       <button v-for="v in views" :key="v.key" class="tl-view-btn" :class="{ active: view === v.key }" @click="setView(v.key)">{{ v.label }}</button>
       <button class="tl-nav-btn" @click="goNext" title="下一段">→</button>
-      <button v-if="!hasData" class="tl-view-btn tl-seed-btn" @click="seedDemo">生成演示数据</button>
       <span class="tl-hint">← 滚轮缩放 · 拖拽平移 →</span>
     </div>
 
@@ -108,36 +107,6 @@ function loadData() {
   // 统合每首歌全量播放次数
   songPlayCount = {}
   for (const d of rawData) songPlayCount[d.path] = (songPlayCount[d.path] || 0) + 1
-}
-
-function seedDemo() {
-  const songs = localMusicStore.songList
-  const paths = songs.length ? songs.map(s => s.path) : ['demo/track1.flac','demo/track2.flac','demo/track3.flac','demo/track4.flac','demo/track5.flac']
-  const names  = songs.length ? songs.map(s => s.name)   : ['七里香','晴天','夜曲','稻香','一路向北','以父之名','枕边故事','搁浅','东风破','发如雪']
-  const singers = songs.length ? songs.map(s => s.singer) : ['周杰伦','林俊杰','陈奕迅','邓紫棋','Taylor Swift']
-  if (!songs.length) {
-    for (let i = 0; i < paths.length; i++) songMap[paths[i]] = { name: names[i % names.length], singer: singers[i % singers.length], path: paths[i] }
-  }
-  const now = Date.now(); const DAY = 86400000; const data = []
-  for (let daysAgo = 365; daysAgo >= 0; daysAgo--) {
-    const dayStart = now - daysAgo * DAY
-    const plays = Math.floor(Math.random() * 9)
-    for (let p = 0; p < plays; p++) {
-      let hour
-      if (Math.random() < 0.08) hour = Math.floor(Math.random() * 6)
-      else if (Math.random() < 0.15) hour = 6 + Math.floor(Math.random() * 2)
-      else hour = 8 + Math.floor(Math.random() * 15)
-      data.push({ path: paths[Math.floor(Math.random() * paths.length)], playAt: dayStart + hour * 3600000 + Math.floor(Math.random() * 60) * 60000, duration: 120 + Math.floor(Math.random() * 240) })
-    }
-    if (Math.random() < 0.03) {
-      for (let p = 0; p < 10 + Math.floor(Math.random() * 15); p++) {
-        data.push({ path: paths[Math.floor(Math.random() * paths.length)], playAt: dayStart + (8 + Math.floor(Math.random() * 15)) * 3600000 + Math.floor(Math.random() * 3600000), duration: 120 + Math.floor(Math.random() * 240) })
-      }
-    }
-  }
-  data.sort((a, b) => a.playAt - b.playAt)
-  localStorage.setItem('playHistoryFull', JSON.stringify(data.slice(0, 10000)))
-  loadData(); view.value = 'year'; calcView(); draw()
 }
 
 const summaryText = computed(() => {
@@ -630,16 +599,13 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); clearTimeout
               background 0.2s, color 0.2s;
 }
 .tl-nav-btn { padding: 0 8px; font-size: 12px; }
-.tl-seed-btn { border-style: dashed; }
 
 .entered .tl-view-btn,
-.entered .tl-nav-btn,
-.entered .tl-seed-btn { opacity: 1; transform: scaleX(1); }
+.entered .tl-nav-btn { opacity: 1; transform: scaleX(1); }
 
 .tl-view-btn.active,
 .tl-view-btn:hover,
-.tl-nav-btn:hover,
-.tl-seed-btn:hover { background: var(--btn-hover-bg); color: var(--btn-hover-text); }
+.tl-nav-btn:hover { background: var(--btn-hover-bg); color: var(--btn-hover-text); }
 
 .tl-hint {
   margin-left: auto; font-size: 10px; font-family: monospace;
