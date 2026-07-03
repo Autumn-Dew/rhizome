@@ -1,11 +1,10 @@
 // 音频设备路由 — 枚举输出设备、切换、热插拔监听
 import { ref, onMounted, onUnmounted } from 'vue'
-
-const STORAGE_KEY = 'rhizome-audio-device'
+import { K_AUDIO_DEVICE } from '@/constants/storage-keys'
 
 export function useAudioDevice() {
   const devices = ref([])
-  const selectedId = ref(localStorage.getItem(STORAGE_KEY) || '')
+  const selectedId = ref(localStorage.getItem(K_AUDIO_DEVICE) || '')
 
   async function refresh() {
     try {
@@ -18,7 +17,7 @@ export function useAudioDevice() {
 
   function select(deviceId) {
     selectedId.value = deviceId
-    localStorage.setItem(STORAGE_KEY, deviceId)
+    localStorage.setItem(K_AUDIO_DEVICE, deviceId)
   }
 
   // 将选中设备应用到 audio 元素

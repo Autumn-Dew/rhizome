@@ -15,7 +15,7 @@
     </div>
 
     <div class="playlist-list">
-      <div class="playlist-item" v-for="item in playlistList" :key="item.localId" @dblclick="goToPlaylistDetail(item)">
+      <div class="playlist-item" v-for="(item, idx) in playlistList" :key="item.localId" :style="staggerStyle(idx)" @dblclick="goToPlaylistDetail(item)">
         <div class="playlist-index">{{ playlistList.indexOf(item) + 1 }}</div>
         <div class="playlist-cover" @click="goToPlaylistDetail(item)">
           <img v-if="item.coverUrl" :src="item.coverUrl" alt="cover" />
@@ -57,9 +57,10 @@
           <button
               v-if="!item.isFavorites && !item.isAuto"
               class="song-btn"
-              :class="{ 'delete-warning': deleteTargetId === item.localId && deleteCount > 0 }"
+              :class="{ 'delete-warning': confirmHint(item.localId) !== '' }"
+              :style="pulseStyle"
               @click="handleDeleteClick(item)"
-              :title="deleteTargetId === item.localId && deleteCount > 0 ? `再点 ${3 - deleteCount} 次删除` : '删除'"
+              :title="confirmHint(item.localId) || '删除'"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke-width="2"/>
@@ -146,15 +147,17 @@ import { ref, computed, onMounted, toRaw } from "vue";
 import { useGlobalTheme } from "@/composables/useGlobalTheme";
 import { usePlayerStore } from "@/stores/playerStore";
 import { useLocalMusicStore } from "@/stores/localMusicStore";
+import { usePageEnter } from '@/composables/usePageEnter'
+import { useDeleteConfirm } from '@/composables/useDeleteConfirm'
 import { useRouter } from 'vue-router'
+import { K_LOCAL_PLAYLISTS, K_PLAYLIST_SONGS } from "@/constants/storage-keys";
+import { createSongFromMeta } from '@/utils/song-factory'
 
 const { themeClass } = useGlobalTheme();
 const playerStore = usePlayerStore();
 const localMusicStore = useLocalMusicStore();
 const router = useRouter()
 
-const LOCAL_PLAYLIST_KEY = "local_playlists";
-const LOCAL_PLAYLIST_SONGS_KEY = "local_playlist_songs";
 const playlistList = ref([]);
 
 const showModal = ref(false);
@@ -164,37 +167,22 @@ const form = ref({ title: "", intro: "" });
 const showAddSongModal = ref(false);
 const currentAddPlaylist = ref(null);
 const selectedPathSet = ref(new Set());
-const deleteCount = ref(0);
-const deleteTargetId = ref(null);
-const entered = ref(false);
-
-// 重置删除计数（任何其他操作调用）
-const resetDeleteCount = () => {
-  deleteCount.value = 0
-  deleteTargetId.value = null
-}
+const { entered, staggerStyle, triggerEnter } = usePageEnter();
+const { confirmDelete, resetConfirm, clickCount, confirmHint, pulseStyle } = useDeleteConfirm();
 
 const handleDeleteClick = (item) => {
   // 禁止删除系统歌单
   if (item.isFavorites || item.isAuto) return
-  if (deleteTargetId.value !== item.localId) {
-    // 不同歌单，重新计数
-    deleteTargetId.value = item.localId
-    deleteCount.value = 1
-    return
-  }
-  deleteCount.value++
-  if (deleteCount.value >= 3) {
-    // 真正删除
-    let local = getLocalPlaylists()
-    local = local.filter(i => i.localId !== item.localId);
-    localStorage.setItem(LOCAL_PLAYLIST_KEY, JSON.stringify(local));
-    const songs = getLocalPlaylistSongs()
-    delete songs[item.localId];
-    localStorage.setItem(LOCAL_PLAYLIST_SONGS_KEY, JSON.stringify(songs));
-    resetDeleteCount()
-    loadPlaylistList()
-  }
+  if (!confirmDelete(item.localId)) return
+  resetConfirm()
+  // 真正删除
+  let local = getLocalPlaylists()
+  local = local.filter(i => i.localId !== item.localId);
+  localStorage.setItem(K_LOCAL_PLAYLISTS, JSON.stringify(local));
+  const songs = getLocalPlaylistSongs()
+  delete songs[item.localId];
+  localStorage.setItem(K_PLAYLIST_SONGS, JSON.stringify(songs));
+  loadPlaylistList()
 }
 
 // 过滤已在当前歌单中的歌曲
@@ -207,11 +195,11 @@ const availableSongs = computed(() => {
 
 function getLocalPlaylistSongs() {
   try {
-    const data = localStorage.getItem(LOCAL_PLAYLIST_SONGS_KEY)
+    const data = localStorage.getItem(K_PLAYLIST_SONGS)
     if (!data) return {}
     const parsed = JSON.parse(data)
     if (Array.isArray(parsed)) {
-      localStorage.setItem(LOCAL_PLAYLIST_SONGS_KEY, JSON.stringify({}))
+      localStorage.setItem(K_PLAYLIST_SONGS, JSON.stringify({}))
       return {}
     }
     return parsed || {}
@@ -219,7 +207,7 @@ function getLocalPlaylistSongs() {
 }
 
 function getLocalPlaylists() {
-  try { return JSON.parse(localStorage.getItem(LOCAL_PLAYLIST_KEY) || "[]"); }
+  try { return JSON.parse(localStorage.getItem(K_LOCAL_PLAYLISTS) || "[]"); }
   catch (e) { return []; }
 }
 
@@ -249,7 +237,7 @@ const addSongsToPlaylist = () => {
   const set = new Set(songList)
   keys.forEach(k => set.add(k))
   localSongs[pl.localId] = Array.from(set)
-  localStorage.setItem(LOCAL_PLAYLIST_SONGS_KEY, JSON.stringify(localSongs))
+  localStorage.setItem(K_PLAYLIST_SONGS, JSON.stringify(localSongs))
   closeAddSongModal()
   loadPlaylistList()
 }
@@ -267,16 +255,7 @@ const addFolderToPlaylist = async () => {
     const meta = await window.electron.parseAudio(filePath)
     if (meta?.path && !existing.has(meta.path)) {
       existing.add(meta.path)
-      newSongs.push({
-        path: meta.path, name: meta.title, singer: meta.singer,
-        album: meta.album || '', year: meta.year || null, genre: meta.genre || '',
-        track: meta.track || null, composer: meta.composer || '',
-        duration: meta.duration || 0, durationFormat: meta.durationFormat || '00:00',
-        playUrl: meta.path, coverUrl: meta.coverUrl || '',
-        lyrics: meta.lyrics || [], syncedLyrics: meta.syncedLyrics || [], lyricsSource: meta.lyricsSource,
-        codec: meta._raw?.codec || '', bitrate: meta._raw?.bitrate || null,
-        sampleRate: meta._raw?.sampleRate || null, channels: meta._raw?.numberOfChannels || null,
-      })
+      newSongs.push(createSongFromMeta(meta))
     }
   }
 
@@ -284,7 +263,7 @@ const addFolderToPlaylist = async () => {
     localMusicStore.addSongs(newSongs)
     localMusicStore.addFolder(result.dirName, result.dirPath)
     localSongs[pl.localId] = Array.from(existing)
-    localStorage.setItem(LOCAL_PLAYLIST_SONGS_KEY, JSON.stringify(localSongs))
+    localStorage.setItem(K_PLAYLIST_SONGS, JSON.stringify(localSongs))
   }
 
   closeAddSongModal()
@@ -304,11 +283,11 @@ const submitForm = () => {
     const idx = localList.findIndex(x => x.localId === editTarget.value.localId);
     if (idx !== -1) {
       localList[idx] = { ...localList[idx], ...data };
-      localStorage.setItem(LOCAL_PLAYLIST_KEY, JSON.stringify(localList));
+      localStorage.setItem(K_LOCAL_PLAYLISTS, JSON.stringify(localList));
     }
   } else {
     localList.unshift({ ...data, localId: Date.now() });
-    localStorage.setItem(LOCAL_PLAYLIST_KEY, JSON.stringify(localList));
+    localStorage.setItem(K_LOCAL_PLAYLISTS, JSON.stringify(localList));
   }
   closeModal();
   loadPlaylistList();
@@ -318,10 +297,10 @@ const toggleSelectSong = (song) => {
   selectedPathSet.value.has(song.path) ? selectedPathSet.value.delete(song.path) : selectedPathSet.value.add(song.path);
 };
 
-const openCreateModal = () => { resetDeleteCount(); isEdit.value = false; form.value = { title: "", intro: "" }; showModal.value = true; };
-const editPlaylist = (item) => { resetDeleteCount(); isEdit.value = true; editTarget.value = item; form.value = { ...item }; showModal.value = true; };
+const openCreateModal = () => { resetConfirm(); isEdit.value = false; form.value = { title: "", intro: "" }; showModal.value = true; };
+const editPlaylist = (item) => { resetConfirm(); isEdit.value = true; editTarget.value = item; form.value = { ...item }; showModal.value = true; };
 const closeModal = () => showModal.value = false;
-const openAddSongModal = (item) => { resetDeleteCount(); currentAddPlaylist.value = item; selectedPathSet.value.clear(); showAddSongModal.value = true; };
+const openAddSongModal = (item) => { resetConfirm(); currentAddPlaylist.value = item; selectedPathSet.value.clear(); showAddSongModal.value = true; };
 const closeAddSongModal = () => showAddSongModal.value = false;
 
 const playPlaylist = (item) => {
@@ -341,7 +320,7 @@ const playPlaylist = (item) => {
 
 const goToPlaylistDetail = (item) => router.push(`/player/playlist-detail/${item.localId}`)
 
-onMounted(async () => { if (!localMusicStore.loaded && !localMusicStore.loading) await localMusicStore.initFromStorage(); loadPlaylistList(); requestAnimationFrame(() => { entered.value = true }); });
+onMounted(async () => { if (!localMusicStore.loaded && !localMusicStore.loading) await localMusicStore.initFromStorage(); loadPlaylistList(); triggerEnter(); });
 </script>
 
 <style scoped>
@@ -450,8 +429,6 @@ onMounted(async () => { if (!localMusicStore.loaded && !localMusicStore.loading)
   opacity: 0; transform: scaleX(0);
   transition: opacity 0.12s ease, transform 0.13s cubic-bezier(0.25, 0, 0, 1);
 }
-.playlist-toolbar .rc-global-btn:nth-child(1) { transition-delay: 0.08s; }
-.playlist-toolbar .rc-global-btn:nth-child(2) { transition-delay: 0.16s; }
 .entered .playlist-toolbar .rc-global-btn { opacity: 1; transform: scaleX(1); }
 
 .playlist-item {
@@ -460,12 +437,4 @@ onMounted(async () => { if (!localMusicStore.loaded && !localMusicStore.loading)
               transform 0.15s cubic-bezier(0.2, 0, 0.2, 1);
 }
 .entered .playlist-item { opacity: 1; transform: translateX(0); }
-.playlist-item:nth-child(1) { transition-delay: 0.24s; }
-.playlist-item:nth-child(2) { transition-delay: 0.263s; }
-.playlist-item:nth-child(3) { transition-delay: 0.286s; }
-.playlist-item:nth-child(4) { transition-delay: 0.309s; }
-.playlist-item:nth-child(5) { transition-delay: 0.332s; }
-.playlist-item:nth-child(6) { transition-delay: 0.355s; }
-.playlist-item:nth-child(7) { transition-delay: 0.378s; }
-.playlist-item:nth-child(8) { transition-delay: 0.401s; }
 </style>

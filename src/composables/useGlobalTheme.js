@@ -1,8 +1,9 @@
 import {computed, ref, watch} from 'vue'
+import { K_THEME } from '@/constants/storage-keys'
 
 const isDark = ref(false)
 
-const saved = localStorage.getItem('rhizome-theme')
+const saved = localStorage.getItem(K_THEME)
 if (saved) {
     isDark.value = saved === 'dark'
 }
@@ -14,7 +15,7 @@ function syncTheme() {
 syncTheme()
 
 watch(isDark, (val) => {
-    localStorage.setItem('rhizome-theme', val ? 'dark' : 'light')
+    localStorage.setItem(K_THEME, val ? 'dark' : 'light')
     syncTheme()
 })
 

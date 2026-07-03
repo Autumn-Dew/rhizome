@@ -1,127 +1,132 @@
-// 听歌报告生成器 — 复用于手动生成和定时自动生成
+// 听歌报告生成器 — Canvas 2D，3x 分辨率，黑白极简风
+import { K_REPORT_PATH } from '@/constants/storage-keys'
 
-/**
- * 生成听歌报告 PNG Blob
- * @param {Array} songs - 歌曲列表，每项需含 name/singer/playCount
- * @param {boolean} isDarkMode - 是否暗色主题
- * @param {string} title - 报告标题
- * @param {string} subtitle - 报告副标题
- * @param {number} topN - 展示前 N 首
- * @returns {Promise<Blob>}
- */
+const SCALE = 3
+
 export async function generateReportBlob(songs, isDarkMode, title, subtitle, topN = 10) {
   const ranked = songs
     .map(s => ({ ...s, _count: s.playCount || s._count || 0 }))
     .filter(s => s._count > 0)
     .sort((a, b) => b._count - a._count)
     .slice(0, topN)
-
   if (!ranked.length) return null
 
-  const bg = isDarkMode ? '#2c2c2c' : '#ffffff'
-  const fg = isDarkMode ? '#ffffff' : '#000000'
-  const sub = isDarkMode ? '#888888' : '#666666'
-  const stripe = isDarkMode ? '#333333' : '#f0f0f0'
+  const bg     = isDarkMode ? '#2c2c2c' : '#ffffff'
+  const cardBg = isDarkMode ? '#333333' : '#f8f8f8'
+  const fg     = isDarkMode ? '#ffffff' : '#000000'
+  const border = isDarkMode ? '#ffffff' : '#000000'
+  const sub    = isDarkMode ? '#999999' : '#666666'
 
-  const W = 600, itemH = 46
-  const H = 72 + ranked.length * itemH + 24
+  const W = 640, pad = 24
+  const headerH = 96
+  const itemH = 40
+
+  // 计算总高度
+  let logicalH = 24 + headerH + 16
+  logicalH += ranked.length * itemH + 44 // 列表卡片含表头
+  logicalH += 40 // 底部
+
   const canvas = document.createElement('canvas')
-  canvas.width = W; canvas.height = H
+  canvas.width = W * SCALE
+  canvas.height = logicalH * SCALE
   const ctx = canvas.getContext('2d')
-  const col1 = 24, col2 = 64, col3 = 340, col4 = W - 24
+  ctx.scale(SCALE, SCALE)
 
-  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H)
-  ctx.fillStyle = fg; ctx.font = 'bold 20px "Microsoft YaHei", sans-serif'
-  ctx.fillText(title, col1, 32)
-  ctx.fillStyle = sub; ctx.font = '12px "Microsoft YaHei", sans-serif'
-  ctx.fillText(subtitle, col1, 50)
+  const FONT = '"Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif'
 
-  ctx.strokeStyle = fg; ctx.lineWidth = 2
-  ctx.beginPath(); ctx.moveTo(col1, 60); ctx.lineTo(col4, 60); ctx.stroke()
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, logicalH)
+  let y = 24
 
-  const headY = 76
-  ctx.fillStyle = sub; ctx.font = '10px monospace'
-  ctx.fillText('#', col1, headY)
-  ctx.fillText('TITLE', col2, headY)
-  ctx.fillText('ARTIST', col3, headY)
-  ctx.textAlign = 'right'; ctx.fillText('PLAYS', col4, headY); ctx.textAlign = 'left'
+  // ── 头部卡片 ──
+  ctx.fillStyle = cardBg
+  ctx.fillRect(pad, y, W - pad * 2, headerH)
+  ctx.strokeStyle = border; ctx.lineWidth = 2
+  ctx.strokeRect(pad, y, W - pad * 2, headerH)
 
+  ctx.fillStyle = fg; ctx.font = `bold 22px ${FONT}`
+  ctx.fillText(title, pad + 20, y + 38)
+  ctx.fillStyle = sub; ctx.font = `13px ${FONT}`
+  ctx.fillText(subtitle, pad + 20, y + 60)
+
+  const totalPlays = ranked.reduce((s, r) => s + r._count, 0)
+  ctx.textAlign = 'right'
+  ctx.fillStyle = fg; ctx.font = `bold 26px ${FONT}`
+  ctx.fillText(String(totalPlays), W - pad - 20, y + 42)
+  ctx.fillStyle = sub; ctx.font = `11px ${FONT}`
+  ctx.fillText('\u603b\u64ad\u653e\u6b21\u6570', W - pad - 20, y + 62)
+  ctx.textAlign = 'left'
+  y += headerH + 16
+
+  // ── 列表卡片 ──
+  const listH = ranked.length * itemH + 44
+  ctx.fillStyle = cardBg
+  ctx.fillRect(pad, y, W - pad * 2, listH)
+  ctx.strokeStyle = border; ctx.lineWidth = 2
+  ctx.strokeRect(pad, y, W - pad * 2, listH)
+
+  const lx = pad + 16; let ly = y + 28
+  ctx.fillStyle = sub; ctx.font = `10px monospace`
+  ctx.fillText('#', lx, ly)
+  ctx.fillText('TITLE', lx + 28, ly)
+  ctx.textAlign = 'right'
+  ctx.fillText('PLAYS', W - pad - 16, ly)
+  ctx.textAlign = 'left'
+
+  ctx.strokeStyle = isDarkMode ? '#555' : '#d0d0d0'; ctx.lineWidth = 1
+  ctx.beginPath(); ctx.moveTo(lx, ly + 6); ctx.lineTo(W - pad - 16, ly + 6); ctx.stroke()
+
+  ly += 14
   ranked.forEach((s, i) => {
-    const top = 90 + i * itemH
-    const mid = top + itemH / 2 + 4
-    if (i % 2 === 1) { ctx.fillStyle = stripe; ctx.fillRect(col1, top, W - col1 * 2, itemH) }
-    ctx.fillStyle = i < 3 ? fg : sub
-    ctx.font = 'bold 13px monospace'; ctx.fillText(String(i + 1), col1, mid)
-    const name = s.name.length > 24 ? s.name.substring(0, 23) + '…' : s.name
-    ctx.fillStyle = fg; ctx.font = '13px "Microsoft YaHei", sans-serif'
-    ctx.fillText(name, col2, mid - 2)
-    const art = (s.singer || '').length > 20 ? (s.singer || '').substring(0, 19) + '…' : (s.singer || '')
-    ctx.fillStyle = sub; ctx.font = '12px "Microsoft YaHei", sans-serif'
-    ctx.fillText(art, col3, mid - 2)
-    ctx.fillStyle = fg; ctx.font = 'bold 13px monospace'
-    ctx.textAlign = 'right'; ctx.fillText(String(s._count), col4, mid); ctx.textAlign = 'left'
-  })
+    const rowY = ly + i * itemH + 10
 
-  return new Promise(resolve => canvas.toBlob(blob => resolve(blob)))
+    ctx.fillStyle = sub; ctx.font = `12px monospace`
+    ctx.fillText(String(i + 1), lx, rowY)
+
+    const nm = s.name.length > 20 ? s.name.substring(0, 19) + '\u2026' : s.name
+    ctx.fillStyle = fg; ctx.font = `13px ${FONT}`
+    ctx.fillText(nm, lx + 28, rowY - 1)
+
+    const art = (s.singer || '').length > 16 ? (s.singer || '').substring(0, 15) + '\u2026' : (s.singer || '')
+    ctx.fillStyle = sub; ctx.font = `11px ${FONT}`
+    ctx.fillText(art, lx + 28, rowY + 14)
+
+    ctx.fillStyle = fg; ctx.font = `bold 12px monospace`
+    ctx.textAlign = 'right'
+    ctx.fillText(String(s._count), W - pad - 16, rowY)
+    ctx.textAlign = 'left'
+  })
+  y += listH + 16
+
+  // ── 底部 ──
+  y += 8
+  ctx.fillStyle = sub; ctx.font = `10px ${FONT}`
+  ctx.textAlign = 'center'
+  ctx.fillText(`Rhizome \u00b7 ${new Date().toLocaleDateString('zh-CN')}`, W / 2, y)
+  ctx.textAlign = 'left'
+
+  return new Promise(resolve => canvas.toBlob(blob => resolve(blob), 'image/png'))
 }
 
-/**
- * 检查并生成定时报告（周报/月报/年报）
- */
 export function checkScheduledReports(songs, isDarkMode) {
   const now = new Date()
-  const dayOfWeek = now.getDay() // 0=Sun, 1=Mon
-  const dayOfMonth = now.getDate()
-  const month = now.getMonth() // 0=Jan
-  const year = now.getFullYear()
-
+  const d = now.getDay(), dm = now.getDate(), m = now.getMonth(), y = now.getFullYear()
   const tasks = []
-
-  // 周一 → 上周周报
-  if (dayOfWeek === 1) {
-    const lastMonday = new Date(now)
-    lastMonday.setDate(now.getDate() - 7)
-    const lastSunday = new Date(now)
-    lastSunday.setDate(now.getDate() - 1)
-    const dateStr = `${lastMonday.getMonth() + 1}/${lastMonday.getDate()} - ${lastSunday.getMonth() + 1}/${lastSunday.getDate()}`
-    tasks.push({
-      title: 'Rhizome 周报',
-      subtitle: `${dateStr}, ${year}`,
-      filename: `rhizome-weekly-${year}-${String(month + 1).padStart(2, '0')}-W${Math.ceil(dayOfMonth / 7)}.png`
-    })
+  if (d === 1) {
+    const lm = new Date(now); lm.setDate(now.getDate() - 7)
+    const ls = new Date(now); ls.setDate(now.getDate() - 1)
+    tasks.push({ title: 'Rhizome \u5468\u62a5', subtitle: `${lm.getMonth() + 1}/${lm.getDate()} - ${ls.getMonth() + 1}/${ls.getDate()}, ${y}`,
+      filename: `rhizome-weekly-${y}-${String(m + 1).padStart(2, '0')}-W${Math.ceil(dm / 7)}.png` })
   }
-
-  // 每月 1 号 → 上月月报
-  if (dayOfMonth === 1) {
-    const lastMonth = month === 0 ? 11 : month - 1
-    const lastMonthYear = month === 0 ? year - 1 : year
-    const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
-    tasks.push({
-      title: 'Rhizome 月报',
-      subtitle: `${monthNames[lastMonth]}, ${lastMonthYear}`,
-      filename: `rhizome-monthly-${lastMonthYear}-${String(lastMonth + 1).padStart(2, '0')}.png`
-    })
+  if (dm === 1) {
+    const mn = ['1\u6708','2\u6708','3\u6708','4\u6708','5\u6708','6\u6708','7\u6708','8\u6708','9\u6708','10\u6708','11\u6708','12\u6708']
+    const lm = m === 0 ? 11 : m - 1, lmy = m === 0 ? y - 1 : y
+    tasks.push({ title: 'Rhizome \u6708\u62a5', subtitle: `${mn[lm]}, ${lmy}`, filename: `rhizome-monthly-${lmy}-${String(lm + 1).padStart(2, '0')}.png` })
   }
-
-  // 每年 1 月 1 号 → 上年年报
-  if (month === 0 && dayOfMonth === 1) {
-    tasks.push({
-      title: 'Rhizome 年报',
-      subtitle: `${year - 1} 年度`,
-      filename: `rhizome-yearly-${year - 1}.png`
-    })
+  if (m === 0 && dm === 1) {
+    tasks.push({ title: 'Rhizome \u5e74\u62a5', subtitle: `${y - 1} \u5e74\u5ea6`, filename: `rhizome-yearly-${y - 1}.png` })
   }
-
   return tasks.map(t => ({ ...t, songs, isDarkMode }))
 }
 
-/**
- * 获取报告保存路径
- */
-export function getReportSavePath() {
-  return localStorage.getItem('rhizome-report-path') || ''
-}
-
-export function setReportSavePath(p) {
-  localStorage.setItem('rhizome-report-path', p)
-}
+export function getReportSavePath() { return localStorage.getItem(K_REPORT_PATH) || '' }
+export function setReportSavePath(p) { localStorage.setItem(K_REPORT_PATH, p) }

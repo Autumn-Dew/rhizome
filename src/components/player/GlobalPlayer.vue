@@ -33,8 +33,12 @@
       <ProgressBar
           :current-value="currentTime"
           :max-value="duration"
+          :loop-a="loopA"
+          :loop-b="loopB"
+          :ab-loop="abLoop"
           @update="onSeek"
           @change="onSeek"
+          @setABPoint="(v) => emit('setABPoint', v)"
       />
     </div>
 
@@ -114,14 +118,18 @@ const props = defineProps({
   desktopLyricsLocked: {
     type: Boolean,
     default: false
-  }
+  },
+  loopA: { type: Number, default: null },
+  loopB: { type: Number, default: null },
+  abLoop: { type: Boolean, default: false },
 })
 
 const emit = defineEmits([
   'prev', 'next', 'togglePlay', 'seek',
   'toggleMode', 'openPlaylist', 'goToDetail',
   'update:volume',
-  'toggleDesktopLyrics', 'toggleLyricLock'
+  'toggleDesktopLyrics', 'toggleLyricLock',
+  'setABPoint',
 ])
 
 // 播放模式图标映射
@@ -382,4 +390,5 @@ watch(() => props.currentSong, (song) => {
   30% { opacity: 0.5; }
   100% { opacity: 0; }
 }
+
 </style>

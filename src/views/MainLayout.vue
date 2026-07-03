@@ -23,6 +23,9 @@
           :volume="volume"
           :desktop-lyrics-visible="desktopLyricsVisible"
           :desktop-lyrics-locked="desktopLyricsLocked"
+          :loop-a="playerStore.loopA"
+          :loop-b="playerStore.loopB"
+          :ab-loop="playerStore.abLoop"
           @prev="playerStore.prevSong"
           @next="playerStore.nextSong"
           @toggle-play="playerStore.togglePlay"
@@ -33,6 +36,8 @@
           @update:volume="onVolumeUpdate"
           @toggle-desktop-lyrics="onToggleDesktopLyrics"
           @toggle-lyric-lock="onToggleLyricLock"
+          @setABPoint="onSetABPoint"
+          @toggle-ab-loop="onToggleABLoop"
       />
     </div>
 
@@ -61,6 +66,9 @@ import {usePlayerStore} from '@/stores/playerStore'
 import {useLocalMusicStore} from '@/stores/localMusicStore'
 import {useShortcuts} from '@/composables/useShortcuts'
 import {useActionChain} from '@/composables/useActionChain'
+import {useLyricOffset} from '@/composables/useLyricOffset'
+import { resolveLyrics } from '@/utils/lyrics'
+import { K_VOLUME, K_LYRIC_SIZE, K_LYRIC_ALIGN, K_DESKTOP_LYRICS_VIS, K_DESKTOP_LYRICS_LCK, K_PLAYER_STATE } from '@/constants/storage-keys'
 
 import GlobalPlayer from '@/components/player/GlobalPlayer.vue'
 import SelectModal from '@/components/common/SelectModal.vue'
@@ -69,14 +77,18 @@ const router = useRouter()
 const route = useRoute()
 const { themeClass } = useGlobalTheme()
 const playerStore = usePlayerStore()
+const { offsetSeconds } = useLyricOffset()
 const openPlaylist = ref(false)
 const isMaximized = ref(false)
 
 // ========== 桌面歌词状态 ==========
-const desktopLyricsVisible = ref(localStorage.getItem('rhizome-desktop-lyrics-visible') === 'true')
+const desktopLyricsVisible = ref(localStorage.getItem(K_DESKTOP_LYRICS_VIS) === 'true')
 const desktopLyricsLocked = ref(false)  // 初始值，onMounted 中异步校正
 
 const volume = ref(1.0)
+
+// 同步 store → 本地 ref（动作链 / IPC 等外部修改 store 后 UI 能响应）
+watch(() => playerStore.volume, (val) => { volume.value = val })
 
 const minimize = () => window.electron?.minimize()
 const maximize = () => window.electron?.maximize()
@@ -89,6 +101,23 @@ const onSeek = (value) => {
   playerStore.seekTo(value)
 }
 
+const onSetABPoint = ({ time }) => {
+  if (playerStore.loopA != null && playerStore.loopB != null) {
+    // 第三次右键：AB 都已有 → 清除
+    playerStore.loopA = null
+    playerStore.loopB = null
+    playerStore.abLoop = false
+  } else if (playerStore.loopA == null) {
+    // 第一次右键：设 A 点
+    playerStore.loopA = time
+  } else {
+    // 第二次右键：设 B 点并开启循环
+    playerStore.loopB = time
+    playerStore.abLoop = true
+    playerStore.seekTo(playerStore.loopA)
+  }
+}
+
 const onVolumeUpdate = (val) => {
   volume.value = val
   playerStore.setAudioVolume(val)
@@ -97,7 +126,7 @@ const onVolumeUpdate = (val) => {
 // ========== 桌面歌词：按钮事件 ==========
 const onToggleDesktopLyrics = () => {
   desktopLyricsVisible.value = !desktopLyricsVisible.value
-  localStorage.setItem('rhizome-desktop-lyrics-visible', desktopLyricsVisible.value.toString())
+  localStorage.setItem(K_DESKTOP_LYRICS_VIS, desktopLyricsVisible.value.toString())
   if (desktopLyricsVisible.value) {
     window.electron?.showDesktopLyrics?.()
     // 立即发送当前歌词状态并启动RAF
@@ -113,7 +142,7 @@ const onToggleDesktopLyrics = () => {
 
 const onToggleLyricLock = () => {
   desktopLyricsLocked.value = !desktopLyricsLocked.value
-  localStorage.setItem('rhizome-desktop-lyrics-locked', desktopLyricsLocked.value.toString())
+  localStorage.setItem(K_DESKTOP_LYRICS_LCK, desktopLyricsLocked.value.toString())
   window.electron?.setDesktopLyricsLock?.(desktopLyricsLocked.value)
 }
 
@@ -122,30 +151,13 @@ let lastLyricIdx = -1
 
 function getLyricsArray() {
   const song = playerStore.currentSong
-  if (!song) return []
-  // 优先使用预解析的同步歌词
-  if (song.syncedLyrics?.length) return song.syncedLyrics
-  // 兼容原始 LRC 字符串数组（重启恢复后的 song.lyrics 是字符串）
-  const raw = song.lyrics || []
-  if (!raw.length) return []
-  // 如果第一个元素有 time 属性，说明已经解析过
-  if (typeof raw[0] === 'object' && 'time' in raw[0]) return raw
-  // 字符串格式 → 当场解析为 {time, text}
-  const parsed = []
-  raw.forEach(line => {
-    const match = line.match(/^\[(\d+):(\d+(?:\.\d+)?)\](.*)$/)
-    if (match) {
-      parsed.push({ time: Number(match[1]) * 60 + Number(match[2]), text: match[3].trim() })
-    }
-  })
-  parsed.sort((a, b) => a.time - b.time)
-  return parsed
+  return resolveLyrics(song)
 }
 
 function getCurrentLineInfo() {
   const list = getLyricsArray()
   if (!list.length) return null
-  const now = playerStore.currentTime
+  const now = playerStore.currentTime + offsetSeconds()
   let idx = 0
   for (let i = 0; i < list.length; i++) { if (list[i].time <= now) idx = i }
   const line = list[idx]
@@ -166,15 +178,15 @@ function sendLyricsTiming(forcePaused) {
       lineStartTime: 0, lineEndTime: 1, elapsed: 0,
       paused: true,
       themeClass: themeClass.value,
-      fontSize: Number(localStorage.getItem('rhizome-lyric-size') || 14),
-      align: localStorage.getItem('rhizome-lyric-align') || 'center',
+      fontSize: Number(localStorage.getItem(K_LYRIC_SIZE) || 14),
+      align: localStorage.getItem(K_LYRIC_ALIGN) || 'center',
     })
     lastLyricIdx = -1
     return
   }
 
-  const fontSize = Number(localStorage.getItem('rhizome-lyric-size') || 14)
-  const align = localStorage.getItem('rhizome-lyric-align') || 'center'
+  const fontSize = Number(localStorage.getItem(K_LYRIC_SIZE) || 14)
+  const align = localStorage.getItem(K_LYRIC_ALIGN) || 'center'
   const data = {
     text: info.text,
     lineStartTime: info.start,
@@ -267,10 +279,10 @@ useShortcuts({
 
 onMounted(() => {
   // 恢复歌词字号
-  const savedSize = localStorage.getItem('rhizome-lyric-size') || '14'
+  const savedSize = localStorage.getItem(K_LYRIC_SIZE) || '14'
   document.documentElement.style.setProperty('--lyric-font-size', savedSize + 'px')
 
-  const saved = localStorage.getItem('rhizome-volume')
+  const saved = localStorage.getItem(K_VOLUME)
   if (saved !== null) {
     volume.value = Number(saved)
     playerStore.setAudioVolume(volume.value)
@@ -331,10 +343,10 @@ onMounted(() => {
   window.electron?.getDesktopLyricsLock?.().then(locked => {
     if (locked !== null && locked !== undefined) {
       desktopLyricsLocked.value = !!locked
-      localStorage.setItem('rhizome-desktop-lyrics-locked', String(!!locked))
+      localStorage.setItem(K_DESKTOP_LYRICS_LCK, String(!!locked))
     } else {
       // IPC 不可用时回退 localStorage
-      desktopLyricsLocked.value = localStorage.getItem('rhizome-desktop-lyrics-locked') === 'true'
+      desktopLyricsLocked.value = localStorage.getItem(K_DESKTOP_LYRICS_LCK) === 'true'
     }
   }).finally(() => {
     // 无论是否读到文件，都要继续恢复流程
@@ -350,7 +362,7 @@ onMounted(() => {
   window.addEventListener('beforeunload', () => playerStore.savePlayerState?.())
 
   // 恢复上次播放状态
-  const savedState = localStorage.getItem('rhizome-player-state')
+  const savedState = localStorage.getItem(K_PLAYER_STATE)
   if (savedState && !playerStore.currentSong) {
     try {
       const state = JSON.parse(savedState)
@@ -405,7 +417,7 @@ onUnmounted(() => {
 })
 
 watch(volume, (val) => {
-  localStorage.setItem('rhizome-volume', val.toString())
+  localStorage.setItem(K_VOLUME, val.toString())
 })
 
 const currentPlaylistSong = computed(() => playerStore.currentSong)

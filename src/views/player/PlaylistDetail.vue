@@ -57,7 +57,7 @@
       </button>
       <template v-if="multiMode">
         <button class="rc-global-btn" @click="toggleSelectAll"><span>{{ isAllSelected ? '全不选' : '全选' }}</span></button>
-        <button class="rc-global-btn" @click="batchRemove" :disabled="!selectedSet.size">
+        <button class="rc-global-btn" :class="{ 'delete-warning': clickCount > 0 }" :style="pulseStyle" @click="batchRemove" :disabled="!selectedSet.size" :title="confirmHint('__batch__') || '批量移除'">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke-width="2"/></svg>
           <span>移除</span>
         </button>
@@ -69,12 +69,15 @@
           class="song-item"
           v-for="(item, idx) in realSongList"
           :key="item.path || idx"
+          :style="staggerStyle(idx)"
           :class="{
             'sort-mode': sortMode,
             'dragging': sortMode && dragFromIdx === idx,
             'drag-over': sortMode && dragOverIdx === idx,
             'selected': multiMode && selectedSet.has(item.path),
-            playing: isCurrentSong(item)
+            playing: isCurrentSong(item),
+            'sort-bounce': bounceIdx === idx,
+            'missing': item.exists === false
           }"
           :draggable="sortMode"
           @click="multiMode ? toggleSelect(item) : null"
@@ -116,7 +119,7 @@
               <path d="M5 3l14 9-14 9V3z" stroke-width="2"/>
             </svg>
           </button>
-          <button class="song-btn" @click="removeFromPlaylist(item)" :disabled="!item.exists" title="从歌单移除">
+          <button class="song-btn" :class="{ 'delete-warning': clickCount > 0 }" :style="pulseStyle" @click="removeFromPlaylist(item)" :disabled="!item.exists" :title="confirmHint(item.path) || '从歌单移除'">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke-width="2"/>
             </svg>
@@ -191,8 +194,15 @@ import { useGlobalTheme } from '@/composables/useGlobalTheme'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useLocalMusicStore } from '@/stores/localMusicStore'
 import { useCurrentSongHighlight } from '@/composables/useCurrentSongHighlight'
+import { usePageEnter } from '@/composables/usePageEnter'
 import FavoriteButton from '@/components/common/FavoriteButton.vue'
 import { ElMessage } from 'element-plus'
+import { K_LOCAL_PLAYLISTS, K_PLAYLIST_SONGS } from "@/constants/storage-keys";
+import { useDeleteConfirm } from '@/composables/useDeleteConfirm'
+import { formatTime } from '@/utils/format'
+import { createSongFromMeta } from '@/utils/song-factory'
+
+import { useSongList } from "@/composables/useSongList";
 
 const route = useRoute()
 const router = useRouter()
@@ -200,220 +210,66 @@ const { themeClass } = useGlobalTheme()
 const playerStore = usePlayerStore()
 const localMusicStore = useLocalMusicStore()
 const { isCurrentSong } = useCurrentSongHighlight()
+const { confirmDelete, resetConfirm, clickCount, confirmHint, pulseStyle } = useDeleteConfirm()
 
 const playlistInfo = ref({})
 const realSongList = ref([])
 const showAddSongModal = ref(false)
 const selectedPathSet = ref(new Set())
-const entered = ref(false)
+const { entered, staggerStyle, triggerEnter } = usePageEnter();
 
 // 过滤已在当前歌单中的歌曲
 const availableSongs = computed(() => {
   const pl = playlistInfo.value
   if (!pl?.localId) return localMusicStore.songList
-  const map = JSON.parse(localStorage.getItem('local_playlist_songs') || '{}')
+  const map = JSON.parse(localStorage.getItem(K_PLAYLIST_SONGS) || '{}')
   const existingKeys = new Set(map[pl.localId] || [])
   return localMusicStore.songList.filter(s => !existingKeys.has(s.path))
 })
 
-// === 排序模式 ===
-const sortMode = ref(false)
-const dragFromIdx = ref(-1)
-const dragOverIdx = ref(-1)
-const sortOrderMap = ref({})
-
-const toggleSortMode = () => {
-  if (sortMode.value) {
-    applySortOrder()
-    sortMode.value = false
-    dragFromIdx.value = -1
-    dragOverIdx.value = -1
-    sortOrderMap.value = {}
-  } else {
-    sortMode.value = true
-    multiMode.value = false
-    selectedSet.value.clear()
-    dragFromIdx.value = -1
-    dragOverIdx.value = -1
-    sortOrderMap.value = {}
-  }
+const persistSongOrder = () => {
+  const pl = playlistInfo.value
+  if (!pl?.localId) return
+  const map = JSON.parse(localStorage.getItem(K_PLAYLIST_SONGS) || '{}')
+  map[pl.localId] = realSongList.value.map(s => s.path).filter(Boolean)
+  localStorage.setItem(K_PLAYLIST_SONGS, JSON.stringify(map))
 }
 
-const onSortOrderInput = (path, e) => {
-  const raw = e.target.value.trim()
-  if (raw === '') {
-    delete sortOrderMap.value[path]
-    return
-  }
-  const num = parseInt(raw, 10)
-  if (!isNaN(num) && num > 0 && String(num) === raw) {
-    sortOrderMap.value[path] = num
-  }
-  e.target.value = sortOrderMap.value[path] ?? ''
-}
+const {
+  sortMode, dragFromIdx, dragOverIdx, sortOrderMap,
+  toggleSortMode, onSortOrderInput,
+  onDragStart, onDragOver, onDragLeave, onDrop, onDragEnd, bounceIdx,
+  multiMode, selectedSet,
+  toggleMultiMode, toggleSelect, isAllSelectedFn, toggleSelectAllFn,
+  cancelMulti, scrollToCurrent,
+} = useSongList(realSongList, persistSongOrder)
 
-const applySortOrder = () => {
-  const map = sortOrderMap.value
-  const entries = Object.entries(map)
-  if (!entries.length) return
-
-  const list = [...realSongList.value]
-  const toMove = []
-  const toKeep = []
-
-  for (const song of list) {
-    const target = map[song.path]
-    if (target !== undefined && target !== null && target !== '') {
-      toMove.push({ song, targetIdx: Number(target) - 1 })
-    } else {
-      toKeep.push(song)
-    }
-  }
-
-  toMove.sort((a, b) => a.targetIdx - b.targetIdx)
-
-  const total = list.length
-  const newList = new Array(total).fill(null)
-  const usedPositions = new Set()
-
-  for (const item of toMove) {
-    let pos = item.targetIdx
-    if (pos < 0) pos = 0
-    if (pos >= total) pos = total - 1
-    while (usedPositions.has(pos) && pos >= 0) pos--
-    if (pos < 0) {
-      pos = item.targetIdx
-      while (usedPositions.has(pos) && pos < total) pos++
-    }
-    if (pos >= 0 && pos < total && !usedPositions.has(pos)) {
-      newList[pos] = item.song
-      usedPositions.add(pos)
-    }
-  }
-
-  let ki = 0
-  for (let i = 0; i < total; i++) {
-    if (!newList[i]) {
-      if (ki < toKeep.length) {
-        newList[i] = toKeep[ki++]
-      }
-    }
-  }
-
-  realSongList.value = newList.filter(Boolean)
-  persistSongOrder()
-}
-
-// === 多选模式 ===
-const multiMode = ref(false)
-const selectedSet = ref(new Set())
-
-const toggleMultiMode = () => {
-  multiMode.value = !multiMode.value
-  if (multiMode.value) {
-    sortMode.value = false
-    dragFromIdx.value = -1
-    dragOverIdx.value = -1
-  } else {
-    selectedSet.value.clear()
-  }
-}
-
-const toggleSelect = (song) => {
-  const s = selectedSet.value
-  s.has(song.path) ? s.delete(song.path) : s.add(song.path)
-}
-
-const isAllSelected = computed(() =>
-  realSongList.value.length > 0 && realSongList.value.every(s => selectedSet.value.has(s.path))
-)
-
-const toggleSelectAll = () => {
-  if (isAllSelected.value) {
-    selectedSet.value.clear()
-  } else {
-    selectedSet.value = new Set(realSongList.value.map(s => s.path))
-  }
-}
+const isAllSelected = computed(() => isAllSelectedFn(realSongList.value))
+const toggleSelectAll = () => toggleSelectAllFn(realSongList.value)
 
 const batchRemove = () => {
+  if (!confirmDelete('__batch__')) return
+  resetConfirm()
   const pl = playlistInfo.value
   if (!pl?.localId || !selectedSet.value.size) return
-  const map = JSON.parse(localStorage.getItem('local_playlist_songs') || '{}')
+  const map = JSON.parse(localStorage.getItem(K_PLAYLIST_SONGS) || '{}')
   if (map[pl.localId]) {
     const removeSet = selectedSet.value
     map[pl.localId] = map[pl.localId].filter(k => !removeSet.has(k))
-    localStorage.setItem('local_playlist_songs', JSON.stringify(map))
+    localStorage.setItem(K_PLAYLIST_SONGS, JSON.stringify(map))
   }
   selectedSet.value.clear()
   multiMode.value = false
   loadPlaylistDetail()
 }
 
-const onDragStart = (idx, e) => {
-  dragFromIdx.value = idx
-  e.dataTransfer.effectAllowed = 'move'
-  e.dataTransfer.setData('text/plain', String(idx))
-}
-const onDragOver = (idx) => {
-  if (dragFromIdx.value === -1) return
-  dragOverIdx.value = idx
-}
-const onDragLeave = () => {}
-const onDrop = (idx) => {
-  if (dragFromIdx.value === -1 || dragFromIdx.value === idx) {
-    dragFromIdx.value = -1
-    dragOverIdx.value = -1
-    return
-  }
-  const list = [...realSongList.value]
-  const [moved] = list.splice(dragFromIdx.value, 1)
-  list.splice(idx, 0, moved)
-  realSongList.value = list
-  persistSongOrder()
-  dragFromIdx.value = -1
-  dragOverIdx.value = -1
-}
-const onDragEnd = () => {
-  dragFromIdx.value = -1
-  dragOverIdx.value = -1
-}
-
-const persistSongOrder = () => {
-  const pl = playlistInfo.value
-  if (!pl?.localId) return
-  const map = JSON.parse(localStorage.getItem('local_playlist_songs') || '{}')
-  map[pl.localId] = realSongList.value.map(s => s.path).filter(Boolean)
-  localStorage.setItem('local_playlist_songs', JSON.stringify(map))
-}
-
-/* 定位到当前播放歌曲 */
-const scrollToCurrent = () => {
-  const el = document.querySelector('.song-item.playing')
-  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-}
-
-/* 取消多选 */
-const cancelMulti = () => {
-  multiMode.value = false
-  selectedSet.value.clear()
-}
-
-const formatTime = (sec) => {
-  if (!sec) return '00:00'
-  const m = Math.floor(sec / 60)
-  const s = Math.floor(sec % 60)
-  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
-}
-
-
 const loadPlaylistDetail = () => {
   const id = route.params.id
-  const localList = JSON.parse(localStorage.getItem('local_playlists') || '[]')
+  const localList = JSON.parse(localStorage.getItem(K_LOCAL_PLAYLISTS) || '[]')
   const target = localList.find(it => String(it.localId) === String(id))
   if (!target) { ElMessage.error('歌单不存在'); router.back(); return }
   // 解析封面
-  const songsMap = JSON.parse(localStorage.getItem('local_playlist_songs') || '{}')
+  const songsMap = JSON.parse(localStorage.getItem(K_PLAYLIST_SONGS) || '{}')
   const songPaths = songsMap[target.localId] || []
   let cover = target.coverUrl || ''
   if (!cover && songPaths.length) {
@@ -445,11 +301,13 @@ const playSong = (song) => {
 
 const removeFromPlaylist = (song) => {
   if (!song.path) return
+  if (!confirmDelete(song.path)) return
+  resetConfirm()
   const pl = playlistInfo.value
-  const map = JSON.parse(localStorage.getItem('local_playlist_songs') || '{}')
+  const map = JSON.parse(localStorage.getItem(K_PLAYLIST_SONGS) || '{}')
   if (map[pl.localId]) {
     map[pl.localId] = map[pl.localId].filter(k => k !== song.path)
-    localStorage.setItem('local_playlist_songs', JSON.stringify(map))
+    localStorage.setItem(K_PLAYLIST_SONGS, JSON.stringify(map))
   }
   loadPlaylistDetail()
 }
@@ -469,11 +327,11 @@ const confirmAddSongs = () => {
   const keys = Array.from(selectedPathSet.value)
   if (!keys.length) return
   const pl = playlistInfo.value
-  const map = JSON.parse(localStorage.getItem('local_playlist_songs') || '{}')
+  const map = JSON.parse(localStorage.getItem(K_PLAYLIST_SONGS) || '{}')
   const existing = new Set(map[pl.localId] || [])
   keys.forEach(k => existing.add(k))
   map[pl.localId] = Array.from(existing)
-  localStorage.setItem('local_playlist_songs', JSON.stringify(map))
+  localStorage.setItem(K_PLAYLIST_SONGS, JSON.stringify(map))
   closeAddSongModal()
   loadPlaylistDetail()
 }
@@ -482,41 +340,21 @@ const addFolderToPlaylist = async () => {
   const result = await window.electron.selectAudioFolder()
   if (!result || !result.files.length) return
   const pl = playlistInfo.value
-  const map = JSON.parse(localStorage.getItem('local_playlist_songs') || '{}')
+  const map = JSON.parse(localStorage.getItem(K_PLAYLIST_SONGS) || '{}')
   const existing = new Set(map[pl.localId] || [])
   const newSongs = []
   for (const filePath of result.files) {
     const meta = await window.electron.parseAudio(filePath)
     if (meta?.path && !existing.has(meta.path)) {
       existing.add(meta.path)
-      newSongs.push({
-        path: meta.path,
-        name: meta.title,
-        singer: meta.singer,
-        album: meta.album || '',
-        year: meta.year || null,
-        genre: meta.genre || '',
-        track: meta.track || null,
-        composer: meta.composer || '',
-        duration: meta.duration || 0,
-        durationFormat: meta.durationFormat || '00:00',
-        playUrl: meta.path,
-        coverUrl: meta.coverUrl || '',
-        lyrics: meta.lyrics || [],
-        syncedLyrics: meta.syncedLyrics || [],
-        lyricsSource: meta.lyricsSource,
-        codec: meta._raw?.codec || '',
-        bitrate: meta._raw?.bitrate || null,
-        sampleRate: meta._raw?.sampleRate || null,
-        channels: meta._raw?.numberOfChannels || null,
-      })
+      newSongs.push(createSongFromMeta(meta))
     }
   }
   if (newSongs.length) {
     localMusicStore.addSongs(newSongs)
     localMusicStore.addFolder(result.dirName, result.dirPath)
     map[pl.localId] = Array.from(existing)
-    localStorage.setItem('local_playlist_songs', JSON.stringify(map))
+    localStorage.setItem(K_PLAYLIST_SONGS, JSON.stringify(map))
   }
   closeAddSongModal()
   loadPlaylistDetail()
@@ -524,7 +362,7 @@ const addFolderToPlaylist = async () => {
 
 const goBack = () => router.back()
 
-onMounted(async () => { if (!localMusicStore.loaded && !localMusicStore.loading) await localMusicStore.initFromStorage(); loadPlaylistDetail(); requestAnimationFrame(() => { entered.value = true }) })
+onMounted(async () => { if (!localMusicStore.loaded && !localMusicStore.loading) await localMusicStore.initFromStorage(); loadPlaylistDetail(); triggerEnter(); })
 </script>
 
 <style scoped>
@@ -723,10 +561,6 @@ onMounted(async () => { if (!localMusicStore.loaded && !localMusicStore.loading)
   opacity: 0; transform: scaleX(0);
   transition: opacity 0.12s ease, transform 0.13s cubic-bezier(0.25, 0, 0, 1);
 }
-.detail-toolbar .rc-global-btn:nth-child(1) { transition-delay: 0.08s; }
-.detail-toolbar .rc-global-btn:nth-child(2) { transition-delay: 0.16s; }
-.detail-toolbar .rc-global-btn:nth-child(3) { transition-delay: 0.24s; }
-.detail-toolbar .rc-global-btn:nth-child(4) { transition-delay: 0.32s; }
 .entered .detail-toolbar .rc-global-btn { opacity: 1; transform: scaleX(1); }
 
 .song-item {
@@ -735,54 +569,4 @@ onMounted(async () => { if (!localMusicStore.loaded && !localMusicStore.loading)
               transform 0.15s cubic-bezier(0.2, 0, 0.2, 1);
 }
 .entered .song-item { opacity: 1; transform: translateX(0); }
-.song-item:nth-child(1) { transition-delay: 0.24s; }
-.song-item:nth-child(2) { transition-delay: 0.263s; }
-.song-item:nth-child(3) { transition-delay: 0.286s; }
-.song-item:nth-child(4) { transition-delay: 0.309s; }
-.song-item:nth-child(5) { transition-delay: 0.332s; }
-.song-item:nth-child(6) { transition-delay: 0.355s; }
-.song-item:nth-child(7) { transition-delay: 0.378s; }
-.song-item:nth-child(8) { transition-delay: 0.401s; }
-.song-item:nth-child(9) { transition-delay: 0.424s; }
-.song-item:nth-child(10) { transition-delay: 0.447s; }
-.song-item:nth-child(11) { transition-delay: 0.47s; }
-.song-item:nth-child(12) { transition-delay: 0.493s; }
-.song-item:nth-child(13) { transition-delay: 0.516s; }
-.song-item:nth-child(14) { transition-delay: 0.539s; }
-.song-item:nth-child(15) { transition-delay: 0.562s; }
-.song-item:nth-child(16) { transition-delay: 0.585s; }
-.song-item:nth-child(17) { transition-delay: 0.608s; }
-.song-item:nth-child(18) { transition-delay: 0.631s; }
-.song-item:nth-child(19) { transition-delay: 0.654s; }
-.song-item:nth-child(20) { transition-delay: 0.677s; }
-.song-item:nth-child(21) { transition-delay: 0.7s; }
-.song-item:nth-child(22) { transition-delay: 0.723s; }
-.song-item:nth-child(23) { transition-delay: 0.746s; }
-.song-item:nth-child(24) { transition-delay: 0.769s; }
-.song-item:nth-child(25) { transition-delay: 0.792s; }
-.song-item:nth-child(26) { transition-delay: 0.815s; }
-.song-item:nth-child(27) { transition-delay: 0.838s; }
-.song-item:nth-child(28) { transition-delay: 0.861s; }
-.song-item:nth-child(29) { transition-delay: 0.884s; }
-.song-item:nth-child(30) { transition-delay: 0.907s; }
-.song-item:nth-child(31) { transition-delay: 0.93s; }
-.song-item:nth-child(32) { transition-delay: 0.953s; }
-.song-item:nth-child(33) { transition-delay: 0.976s; }
-.song-item:nth-child(34) { transition-delay: 0.999s; }
-.song-item:nth-child(35) { transition-delay: 1.022s; }
-.song-item:nth-child(36) { transition-delay: 1.045s; }
-.song-item:nth-child(37) { transition-delay: 1.068s; }
-.song-item:nth-child(38) { transition-delay: 1.091s; }
-.song-item:nth-child(39) { transition-delay: 1.114s; }
-.song-item:nth-child(40) { transition-delay: 1.137s; }
-.song-item:nth-child(41) { transition-delay: 1.16s; }
-.song-item:nth-child(42) { transition-delay: 1.183s; }
-.song-item:nth-child(43) { transition-delay: 1.206s; }
-.song-item:nth-child(44) { transition-delay: 1.229s; }
-.song-item:nth-child(45) { transition-delay: 1.252s; }
-.song-item:nth-child(46) { transition-delay: 1.275s; }
-.song-item:nth-child(47) { transition-delay: 1.298s; }
-.song-item:nth-child(48) { transition-delay: 1.321s; }
-.song-item:nth-child(49) { transition-delay: 1.344s; }
-.song-item:nth-child(50) { transition-delay: 1.367s; }
 </style>

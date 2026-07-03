@@ -9,6 +9,7 @@ import { useLocalMusicStore } from '@/stores/localMusicStore'
 import { ref, onMounted } from "vue";
 import { checkScheduledReports, generateReportBlob, getReportSavePath } from '@/composables/useReportGenerator'
 import { checkAndGenerateWeekly } from '@/composables/useWeeklyPlaylists'
+import { K_PLAY_COUNT_REAL } from '@/constants/storage-keys'
 
 const appReady = ref(false)
 
@@ -16,7 +17,7 @@ async function generateScheduledReports(localStore) {
   try {
     const isDark = document.documentElement.classList.contains('theme-dark')
     const songs = localStore.songList.map(s => {
-      const countMap = JSON.parse(localStorage.getItem('playCountReal') || '{}')
+      const countMap = JSON.parse(localStorage.getItem(K_PLAY_COUNT_REAL) || '{}')
       return { ...s, playCount: countMap[s.path] || 0 }
     })
     const tasks = checkScheduledReports(songs, isDark)
@@ -41,9 +42,17 @@ onMounted(async () => {
   const localStore = useLocalMusicStore()
   await localStore.migrateIfNeeded()
   await localStore.initFromStorage()
+  localStore.mergeSongCache()
 
   // 周报歌单（本周最爱 + 每周发现）
   checkAndGenerateWeekly(localStore.songList)
+
+  // 每 30 分钟检测是否需要更新智能歌单
+  setInterval(() => {
+    if (localStore.loaded && localStore.songList.length) {
+      checkAndGenerateWeekly(localStore.songList)
+    }
+  }, 30 * 60 * 1000)
 
   // 定时报告（周报/月报/年报）—— 异步后台生成，不阻塞 UI
   generateScheduledReports(localStore)

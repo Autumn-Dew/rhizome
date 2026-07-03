@@ -1,39 +1,19 @@
 // 动作链 — 存储 + 执行引擎
 import { ref } from 'vue'
 import { usePlayerStore } from '@/stores/playerStore'
+import { K_ACTION_CHAINS } from '@/constants/storage-keys'
 
-const STORAGE_KEY = 'rhizome-action-chains'
+export { ACTION_TYPES } from '@/constants/defaults'
 
-export const ACTION_TYPES = [
-  { type: 'play', label: '播放', params: [] },
-  { type: 'pause', label: '暂停', params: [] },
-  { type: 'togglePlay', label: '播放/暂停', params: [] },
-  { type: 'next', label: '下一首', params: [] },
-  { type: 'prev', label: '上一首', params: [] },
-  { type: 'setVolume', label: '设置音量', params: [{ key: 'volume', label: '音量', min: 0, max: 1, step: 0.05, default: 0.8 }] },
-  { type: 'fadeVolume', label: '淡入淡出', params: [
-    { key: 'from', label: '起始', min: 0, max: 1, step: 0.05, default: 0 },
-    { key: 'to', label: '目标', min: 0, max: 1, step: 0.05, default: 1 },
-    { key: 'duration', label: '时长(秒)', min: 1, max: 30, step: 1, default: 3 },
-  ]},
-  { type: 'setPlayMode', label: '播放模式', params: [{ key: 'mode', label: '模式', options: [
-    { label: '列表播放', value: 'list' }, { label: '单曲播放', value: 'single' },
-    { label: '列表循环', value: 'listLoop' }, { label: '单曲循环', value: 'singleLoop' }, { label: '随机播放', value: 'random' },
-  ]}] },
-  { type: 'showDesktopLyrics', label: '显示桌面歌词', params: [] },
-  { type: 'hideDesktopLyrics', label: '隐藏桌面歌词', params: [] },
-  { type: 'toggleDesktopLyrics', label: '桌面歌词开关', params: [] },
-  { type: 'seek', label: '跳转', params: [{ key: 'seconds', label: '秒数', min: 0, max: 3600, step: 1, default: 0 }] },
-  { type: 'sleepTimer', label: '睡眠定时', params: [{ key: 'minutes', label: '分钟', min: 1, max: 120, step: 1, default: 30 }] },
-  { type: 'quit', label: '退出应用', params: [] },
-]
-
-function loadAll() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [] } catch { return [] } }
-function saveAll(data) { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)) }
+function loadAll() { try { return JSON.parse(localStorage.getItem(K_ACTION_CHAINS)) || [] } catch { return [] } }
+function saveAll(data) { localStorage.setItem(K_ACTION_CHAINS, JSON.stringify(data)) }
 
 const chains = ref(loadAll())
 
 export function useActionChain() {
+  // 在 setup 上下文中捕获 store 引用，确保 IPC 回调中也能触发响应式更新
+  const store = usePlayerStore()
+
   function persist() { saveAll(chains.value) }
 
   function add(name, actions) {
@@ -50,7 +30,6 @@ export function useActionChain() {
     persist()
   }
   function execute(chain) {
-    const store = usePlayerStore()
     const api = window.electron
     for (const act of chain.actions) {
       switch (act.type) {

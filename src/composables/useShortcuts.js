@@ -1,60 +1,20 @@
 import { onMounted, onUnmounted } from 'vue'
-
-const STORAGE_KEY = 'rhizome-shortcuts'
+import { K_SHORTCUTS } from '@/constants/storage-keys'
+import { SHORTCUT_DEFAULTS, SHORTCUT_ACTION_DEFS } from '@/constants/defaults'
 
 // 每个 action：label + local(有/无) + global(有/无)
 // local: 应用内键监听；global: Electron 全局（窗口外也生效）
-const actionDefs = {
-  togglePlay:   { label: '播放 / 暂停',     local: true,  global: true },
-  prevSong:     { label: '上一曲',          local: true,  global: true },
-  nextSong:     { label: '下一曲',          local: true,  global: true },
-  volUp:        { label: '音量增大',        local: true,  global: true },
-  volDown:      { label: '音量减小',        local: true,  global: true },
-  toggleWindow: { label: '显示 / 隐藏窗口',  local: false, global: true },
-  toggleDesktopLyrics: { label: '显示 / 隐藏桌面歌词', local: true, global: true },
-}
 
-const defaults = {
-  togglePlay: {
-    local:  { code: 'Space',      ctrl: false, shift: false, alt: false },
-    global: { code: 'Slash',     ctrl: true,  shift: true,  alt: false },
-  },
-  prevSong: {
-    local:  { code: 'ArrowLeft',  ctrl: false, shift: false, alt: false },
-    global: { code: 'ArrowLeft',  ctrl: true,  shift: false, alt: false },
-  },
-  nextSong: {
-    local:  { code: 'ArrowRight', ctrl: false, shift: false, alt: false },
-    global: { code: 'ArrowRight', ctrl: true,  shift: false, alt: false },
-  },
-  volUp: {
-    local:  { code: 'ArrowUp',    ctrl: false, shift: false, alt: false },
-    global: { code: 'ArrowUp',    ctrl: true,  shift: false, alt: false },
-  },
-  volDown: {
-    local:  { code: 'ArrowDown',  ctrl: false, shift: false, alt: false },
-    global: { code: 'ArrowDown',  ctrl: true,  shift: false, alt: false },
-  },
-  toggleWindow: {
-    local:  null,
-    global: { code: 'Backslash',  ctrl: true,  shift: false, alt: false },
-  },
-  toggleDesktopLyrics: {
-    local:  null,
-    global: { code: 'Quote',      ctrl: true,  shift: false, alt: false },
-  },
-}
-
-let config = JSON.parse(JSON.stringify(defaults))
+let config = JSON.parse(JSON.stringify(SHORTCUT_DEFAULTS))
 
 function load() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = localStorage.getItem(K_SHORTCUTS)
     if (raw) {
       const saved = JSON.parse(raw)
-      for (const k of Object.keys(defaults)) {
+      for (const k of Object.keys(SHORTCUT_DEFAULTS)) {
         if (saved[k]) {
-          if (saved[k].local && defaults[k].local) config[k].local = saved[k].local
+          if (saved[k].local && SHORTCUT_DEFAULTS[k].local) config[k].local = saved[k].local
           if (saved[k].global) config[k].global = saved[k].global
         }
       }
@@ -64,7 +24,7 @@ function load() {
 load()
 
 function save() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(config))
+  localStorage.setItem(K_SHORTCUTS, JSON.stringify(config))
 }
 
 export function comboLabel(c) {
@@ -98,7 +58,7 @@ function syncElectronGlobal() {
     toggleWindow: 'toggle-window',
     toggleDesktopLyrics: 'toggle-desktop-lyrics',
   }
-  for (const [action, def] of Object.entries(actionDefs)) {
+  for (const [action, def] of Object.entries(SHORTCUT_ACTION_DEFS)) {
     if (!def.global) continue
     const c = config[action]?.global
     if (c) list.push({ combo: c, event: eventMap[action] })
@@ -153,7 +113,7 @@ export function useShortcuts(handlers) {
   onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 }
 
-export function getActionDefs() { return { ...actionDefs } }
+export function getActionDefs() { return { ...SHORTCUT_ACTION_DEFS } }
 
 export function getShortcutConfig() { return JSON.parse(JSON.stringify(config)) }
 
@@ -162,14 +122,14 @@ export function updateShortcut(action, scope, combo) {
     config[action][scope] = { ...combo }
   } else {
     // clear
-    config[action][scope] = defaults[action][scope] ? { code: '', ctrl: false, shift: false, alt: false } : null
+    config[action][scope] = SHORTCUT_DEFAULTS[action][scope] ? { code: '', ctrl: false, shift: false, alt: false } : null
   }
   save()
   if (scope === 'global') syncElectronGlobal()
 }
 
 export function resetShortcuts() {
-  config = JSON.parse(JSON.stringify(defaults))
+  config = JSON.parse(JSON.stringify(SHORTCUT_DEFAULTS))
   save()
   syncElectronGlobal()
   window.location.reload()

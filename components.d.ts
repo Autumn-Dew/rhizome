@@ -21,8 +21,6 @@ declare module 'vue' {
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SelectModal: typeof import('./src/components/common/SelectModal.vue')['default']
-    SettingsModal: typeof import('./src/components/common/SettingsModal.vue')['default']
-    ShortcutSettings: typeof import('./src/components/common/ShortcutSettings.vue')['default']
     Timestamp: typeof import('./src/components/player/Timestamp.vue')['default']
     VolumeControl: typeof import('./src/components/player/VolumeControl.vue')['default']
   }

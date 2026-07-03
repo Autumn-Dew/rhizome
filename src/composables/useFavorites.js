@@ -1,9 +1,11 @@
+import { K_LOCAL_PLAYLISTS, K_PLAYLIST_SONGS } from '@/constants/storage-keys'
+
 const FAVORITES_ID = '__favorites__'
 
 // Ensure favorites playlist exists
 function ensureFavorites() {
   try {
-    const playlists = JSON.parse(localStorage.getItem('local_playlists') || '[]')
+    const playlists = JSON.parse(localStorage.getItem(K_LOCAL_PLAYLISTS) || '[]')
     if (!playlists.find(p => p.localId === FAVORITES_ID)) {
       playlists.unshift({
         localId: FAVORITES_ID,
@@ -12,7 +14,7 @@ function ensureFavorites() {
         isFavorites: true,
         createdAt: Date.now()
       })
-      localStorage.setItem('local_playlists', JSON.stringify(playlists))
+      localStorage.setItem(K_LOCAL_PLAYLISTS, JSON.stringify(playlists))
     }
   } catch {}
 }
@@ -20,7 +22,7 @@ function ensureFavorites() {
 // Check if a song is in favorites
 function isFavorited(songPath) {
   try {
-    const map = JSON.parse(localStorage.getItem('local_playlist_songs') || '{}')
+    const map = JSON.parse(localStorage.getItem(K_PLAYLIST_SONGS) || '{}')
     const keys = map[FAVORITES_ID] || []
     return keys.includes(songPath)
   } catch { return false }
@@ -29,7 +31,7 @@ function isFavorited(songPath) {
 // Toggle a song in/out of favorites
 function toggleFavorite(songPath) {
   try {
-    const map = JSON.parse(localStorage.getItem('local_playlist_songs') || '{}')
+    const map = JSON.parse(localStorage.getItem(K_PLAYLIST_SONGS) || '{}')
     if (!map[FAVORITES_ID]) map[FAVORITES_ID] = []
     const idx = map[FAVORITES_ID].indexOf(songPath)
     if (idx >= 0) {
@@ -37,7 +39,7 @@ function toggleFavorite(songPath) {
     } else {
       map[FAVORITES_ID].push(songPath)
     }
-    localStorage.setItem('local_playlist_songs', JSON.stringify(map))
+    localStorage.setItem(K_PLAYLIST_SONGS, JSON.stringify(map))
     return idx < 0 // true = added, false = removed
   } catch { return false }
 }

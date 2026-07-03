@@ -5,6 +5,7 @@
     <div
         class="rc-progress-bar-container"
         @click="onBarClick"
+        @contextmenu.prevent="onBarRightClick"
         @wheel.prevent="onWheel"
         @mousemove="onMouseMove"
         @mouseenter="hovering = true"
@@ -12,6 +13,10 @@
     >
       <div class="rc-progress-track">
         <div class="rc-progress-fill" :style="{ width: percent + '%' }"></div>
+        <div v-if="loopA != null && loopB != null" class="rc-ab-zone"
+          :style="{ left: (loopA / maxValue * 100) + '%', width: ((loopB - loopA) / maxValue * 100) + '%' }"></div>
+        <div v-if="loopA != null" class="rc-ab-marker" :style="{ left: (loopA / maxValue * 100) + '%' }" title="A 点"></div>
+        <div v-if="loopB != null" class="rc-ab-marker" :style="{ left: (loopB / maxValue * 100) + '%' }" title="B 点"></div>
         <input
             type="range"
             class="rc-progress-input"
@@ -43,10 +48,18 @@ const props = defineProps({
   draggable: {
     type: Boolean,
     default: true
+  },
+  loopA: {
+    type: Number,
+    default: null
+  },
+  loopB: {
+    type: Number,
+    default: null
   }
 })
 
-const emit = defineEmits(['update', 'change'])
+const emit = defineEmits(['update', 'change', 'setABPoint'])
 
 const hovering = ref(false)
 const hoverPercent = ref(0)
@@ -80,8 +93,15 @@ const onBarClick = (e) => {
   const rect = e.currentTarget.querySelector('.rc-progress-track').getBoundingClientRect()
   const clickX = e.clientX - rect.left
   const percent = Math.min(1, Math.max(0, clickX / rect.width))
-  const newValue = percent * props.maxValue
-  emit('change', newValue)
+  emit('change', percent * props.maxValue)
+}
+
+const onBarRightClick = (e) => {
+  if (!props.draggable) return
+  const rect = e.currentTarget.querySelector('.rc-progress-track').getBoundingClientRect()
+  const clickX = e.clientX - rect.left
+  const percent = Math.min(1, Math.max(0, clickX / rect.width))
+  emit('setABPoint', { time: percent * props.maxValue })
 }
 
 const onMouseMove = (e) => {
@@ -91,7 +111,7 @@ const onMouseMove = (e) => {
 
 const onWheel = (e) => {
   if (!props.draggable) return
-  const delta = e.deltaY > 0 ? -2 : 2
+  const delta = e.deltaY > 0 ? 2 : -2
   const newValue = Math.max(0, Math.min(props.maxValue, props.currentValue + delta))
   emit('change', newValue)
 }
@@ -166,6 +186,26 @@ const onWheel = (e) => {
 
 .rc-progress-bar-container:hover .rc-progress-fill {
   background: var(--btn-hover-bg);
+}
+
+.rc-ab-zone {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: var(--btn-hover-bg);
+  opacity: 0.2;
+  pointer-events: none;
+}
+
+.rc-ab-marker {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background: var(--border-color);
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 3;
 }
 
 .rc-seek-label {

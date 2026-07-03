@@ -6,6 +6,13 @@
           <h2>播放历史</h2>
           <p class="desc">仅显示本地歌曲播放记录</p>
         </div>
+        <span class="header-actions">
+        <button class="tl-entry-btn" @click="goDiary" title="听歌日记">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 7h16M4 11h16M4 15h10M4 19h14"/>
+          </svg>
+          <span>日记</span>
+        </button>
         <button class="tl-entry-btn" @click="goTimeline" title="音乐时间线">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M3 12h18M3 6h18M3 18h10"/>
@@ -15,11 +22,12 @@
           </svg>
           <span>时间线</span>
         </button>
+        </span>
       </div>
     </div>
 
     <div class="song-list">
-      <div class="song-item" v-for="(item, idx) in realHistoryList" :key="idx" @dblclick="playSong(item)" :class="{ playing: isCurrentSong(item) }">
+      <div class="song-item" v-for="(item, idx) in realHistoryList" :key="idx" @dblclick="playSong(item)" :class="{ playing: isCurrentSong(item) }" :style="staggerStyle(idx)">
         <div class="song-index">{{ idx + 1 }}</div>
         <div class="song-cover" v-if="item.coverUrl">
           <img :src="item.coverUrl" alt="cover" />
@@ -64,31 +72,25 @@
 import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useGlobalTheme } from "@/composables/useGlobalTheme";
+import { usePageEnter } from "@/composables/usePageEnter";
 import { usePlayerStore } from "@/stores/playerStore";
 import { useLocalMusicStore } from "@/stores/localMusicStore";
 import { useCurrentSongHighlight } from "@/composables/useCurrentSongHighlight";
 import FavoriteButton from "@/components/common/FavoriteButton.vue";
+import { K_PLAY_HISTORY_VIEW } from "@/constants/storage-keys";
+import { formatTime } from '@/utils/format'
+import { useSongList } from "@/composables/useSongList";
 
 const { themeClass } = useGlobalTheme();
+const { entered, staggerStyle } = usePageEnter();
 const router = useRouter();
 const playerStore = usePlayerStore();
 const localMusicStore = useLocalMusicStore();
 const { isCurrentSong } = useCurrentSongHighlight();
 
 const rawHistory = ref([]);
-const entered = ref(false);
 
-const scrollToCurrent = () => {
-  const el = document.querySelector('.song-item.playing')
-  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-}
-
-const formatTime = (sec) => {
-  if (!sec) return "00:00";
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60);
-  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
-};
+const { scrollToCurrent } = useSongList(ref([]), () => {})
 
 const realHistoryList = computed(() => {
   const local = localMusicStore.songList;
@@ -107,26 +109,28 @@ const playSong = (song) => {
 
 const removeSingle = (song) => {
   rawHistory.value = rawHistory.value.filter(x => x.path !== song.path);
-  localStorage.setItem("playHistoryView", JSON.stringify(rawHistory.value));
+  localStorage.setItem(K_PLAY_HISTORY_VIEW, JSON.stringify(rawHistory.value));
 };
 
 const clearHistory = () => {
   rawHistory.value = [];
-  localStorage.setItem("playHistoryView", "[]");
+  localStorage.setItem(K_PLAY_HISTORY_VIEW, "[]");
 };
 
 const refreshHistory = () => {
-  const d = localStorage.getItem("playHistoryView");
+  const d = localStorage.getItem(K_PLAY_HISTORY_VIEW);
   rawHistory.value = d ? JSON.parse(d) : [];
 };
 
 const goTimeline = () => {
   router.push('/player/timeline')
 };
+const goDiary = () => {
+  router.push('/player/diary')
+};
 
 onMounted(() => {
   refreshHistory();
-  requestAnimationFrame(() => { entered.value = true });
 });
 </script>
 
@@ -185,6 +189,8 @@ onMounted(() => {
   justify-content: space-between;
   align-items: flex-start;
 }
+
+.header-actions { display: flex; gap: 6px; }
 
 .tl-entry-btn {
   display: flex;
@@ -472,29 +478,4 @@ onMounted(() => {
   opacity: 1;
   transform: translateX(0);
 }
-.song-item:nth-child(1) { transition-delay: 0.24s; }
-.song-item:nth-child(2) { transition-delay: 0.263s; }
-.song-item:nth-child(3) { transition-delay: 0.286s; }
-.song-item:nth-child(4) { transition-delay: 0.309s; }
-.song-item:nth-child(5) { transition-delay: 0.332s; }
-.song-item:nth-child(6) { transition-delay: 0.355s; }
-.song-item:nth-child(7) { transition-delay: 0.378s; }
-.song-item:nth-child(8) { transition-delay: 0.401s; }
-.song-item:nth-child(9) { transition-delay: 0.424s; }
-.song-item:nth-child(10) { transition-delay: 0.447s; }
-.song-item:nth-child(11) { transition-delay: 0.47s; }
-.song-item:nth-child(12) { transition-delay: 0.493s; }
-.song-item:nth-child(13) { transition-delay: 0.516s; }
-.song-item:nth-child(14) { transition-delay: 0.539s; }
-.song-item:nth-child(15) { transition-delay: 0.562s; }
-.song-item:nth-child(16) { transition-delay: 0.585s; }
-.song-item:nth-child(17) { transition-delay: 0.608s; }
-.song-item:nth-child(18) { transition-delay: 0.631s; }
-.song-item:nth-child(19) { transition-delay: 0.654s; }
-.song-item:nth-child(20) { transition-delay: 0.677s; }
-.song-item:nth-child(21) { transition-delay: 0.7s; }
-.song-item:nth-child(22) { transition-delay: 0.723s; }
-.song-item:nth-child(23) { transition-delay: 0.746s; }
-.song-item:nth-child(24) { transition-delay: 0.769s; }
-.song-item:nth-child(25) { transition-delay: 0.792s; }
 </style>

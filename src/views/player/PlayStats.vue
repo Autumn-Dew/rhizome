@@ -35,7 +35,7 @@
         </button>
       </div>
       <div class="song-list">
-        <div class="song-item" v-for="(item, idx) in songTop" :key="idx" @dblclick="playSong(item)" :class="{ playing: isCurrentSong(item) }">
+        <div class="song-item" v-for="(item, idx) in songTop" :key="idx" :style="staggerStyle(idx)" @dblclick="playSong(item)" :class="{ playing: isCurrentSong(item) }">
           <div class="song-index">{{ idx + 1 }}</div>
           <div class="song-cover" v-if="item.coverUrl">
             <img :src="item.coverUrl" alt="cover" />
@@ -71,7 +71,7 @@
         <h3 class="section-title">歌手排行</h3>
       </div>
       <div class="song-list">
-        <div class="song-item" v-for="(item, idx) in artistTop" :key="item.artist">
+        <div class="song-item" v-for="(item, idx) in artistTop" :key="item.artist" :style="staggerStyle(idx)">
           <div class="song-index">{{ idx + 1 }}</div>
           <div class="song-info">
             <div class="song-name">{{ item.artist }}</div>
@@ -96,8 +96,12 @@ import { ref, onMounted } from "vue";
 import { usePlayerStore } from "@/stores/playerStore";
 import { useLocalMusicStore } from "@/stores/localMusicStore";
 import { useCurrentSongHighlight } from "@/composables/useCurrentSongHighlight";
+import { usePageEnter } from '@/composables/usePageEnter'
 import FavoriteButton from "@/components/common/FavoriteButton.vue";
 import { ElMessage } from "element-plus";
+import { K_PLAY_COUNT_REAL } from "@/constants/storage-keys";
+import { formatDuration } from '@/utils/format'
+import { useSongList } from "@/composables/useSongList";
 
 const playerStore = usePlayerStore();
 const localMusicStore = useLocalMusicStore();
@@ -106,15 +110,12 @@ const { isCurrentSong } = useCurrentSongHighlight();
 const stats = ref({ totalPlays: 0, totalSongs: 0, totalTime: 0, topArtist: "未知" });
 const songTop = ref([]);
 const artistTop = ref([]);
-const entered = ref(false);
+const { entered, staggerStyle } = usePageEnter();
 
-const scrollToCurrent = () => {
-  const el = document.querySelector('.song-item.playing')
-  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-}
+const { scrollToCurrent } = useSongList(ref([]), () => {})
 
 function getPlayCount() {
-  try { const d = localStorage.getItem("playCountReal"); return d ? JSON.parse(d) : {} } catch { return {} }
+  try { const d = localStorage.getItem(K_PLAY_COUNT_REAL); return d ? JSON.parse(d) : {} } catch { return {} }
 }
 
 function getTotalTime() {
@@ -125,15 +126,6 @@ function getTotalTime() {
         total += (song.duration || 0) * count
     }
     return total
-}
-
-function formatDuration(sec) {
-  if (!sec || sec < 0) return "0 分钟"
-  const totalMin = Math.round(sec / 60)
-  if (totalMin < 60) return `${totalMin} 分钟`
-  const h = Math.floor(totalMin / 60)
-  const m = totalMin % 60
-  return `${h} 小时 ${m} 分钟`
 }
 
 function refreshStats() {
@@ -170,7 +162,6 @@ const playAll = () => {
 
 onMounted(() => {
   refreshStats();
-  requestAnimationFrame(() => { entered.value = true });
 })
 </script>
 
@@ -306,10 +297,6 @@ onMounted(() => {
               transform 0.13s cubic-bezier(0.25, 0, 0, 1);
 }
 .entered .stat-card { opacity: 1; transform: scaleX(1); }
-.stat-card:nth-child(1) { transition-delay: 0.08s; }
-.stat-card:nth-child(2) { transition-delay: 0.16s; }
-.stat-card:nth-child(3) { transition-delay: 0.24s; }
-.stat-card:nth-child(4) { transition-delay: 0.32s; }
 
 .top-section .section-header {
   opacity: 0; transform: translateX(-8px);
@@ -326,29 +313,4 @@ onMounted(() => {
               transform 0.15s cubic-bezier(0.2, 0, 0.2, 1);
 }
 .entered .song-item { opacity: 1; transform: translateX(0); }
-.song-item:nth-child(1) { transition-delay: 0.24s; }
-.song-item:nth-child(2) { transition-delay: 0.263s; }
-.song-item:nth-child(3) { transition-delay: 0.286s; }
-.song-item:nth-child(4) { transition-delay: 0.309s; }
-.song-item:nth-child(5) { transition-delay: 0.332s; }
-.song-item:nth-child(6) { transition-delay: 0.355s; }
-.song-item:nth-child(7) { transition-delay: 0.378s; }
-.song-item:nth-child(8) { transition-delay: 0.401s; }
-.song-item:nth-child(9) { transition-delay: 0.424s; }
-.song-item:nth-child(10) { transition-delay: 0.447s; }
-.song-item:nth-child(11) { transition-delay: 0.47s; }
-.song-item:nth-child(12) { transition-delay: 0.493s; }
-.song-item:nth-child(13) { transition-delay: 0.516s; }
-.song-item:nth-child(14) { transition-delay: 0.539s; }
-.song-item:nth-child(15) { transition-delay: 0.562s; }
-.song-item:nth-child(16) { transition-delay: 0.585s; }
-.song-item:nth-child(17) { transition-delay: 0.608s; }
-.song-item:nth-child(18) { transition-delay: 0.631s; }
-.song-item:nth-child(19) { transition-delay: 0.654s; }
-.song-item:nth-child(20) { transition-delay: 0.677s; }
-.song-item:nth-child(21) { transition-delay: 0.7s; }
-.song-item:nth-child(22) { transition-delay: 0.723s; }
-.song-item:nth-child(23) { transition-delay: 0.746s; }
-.song-item:nth-child(24) { transition-delay: 0.769s; }
-.song-item:nth-child(25) { transition-delay: 0.792s; }
 </style>

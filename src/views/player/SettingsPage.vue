@@ -27,6 +27,16 @@
       </div>
 
       <div class="sp-row">
+        <span class="sp-label">歌词延迟</span>
+        <div class="sp-stepper">
+          <button class="sp-btn" @click="changeLyricOffset(-5)" :disabled="lyricOffset <= -2000">−5</button>
+          <span class="sp-value">{{ lyricOffset }}ms</span>
+          <button class="sp-btn" @click="changeLyricOffset(5)" :disabled="lyricOffset >= 2000">+5</button>
+          <button class="sp-btn" style="width:auto;padding:0 4px;font-size:10px" @click="lyricOffset = 0; saveLyricOffset()">归零</button>
+        </div>
+      </div>
+
+      <div class="sp-row">
         <span class="sp-label">开机自启</span>
         <div class="sp-stepper">
           <button class="sp-btn toggle-btn" :class="{ active: autoLaunch }" @click="toggleAutoLaunch">{{ autoLaunch ? 'ON' : 'OFF' }}</button>
@@ -55,10 +65,16 @@
         </div>
       </div>
 
+      <div class="sp-row">
+        <span class="sp-label">删除确认次数</span>
+        <div class="sp-stepper">
+          <button v-for="n in DELETE_CONFIRM_OPTIONS" :key="n" class="sp-btn toggle-btn" :class="{ active: requiredCount === n }" @click="setRequiredCount(n)">{{ n }}</button>
+        </div>
+      </div>
+
       <div class="sp-actions">
         <button class="sp-action-btn" @click="handleBackup">保存数据（备份）</button>
         <button class="sp-action-btn" @click="handleRestore">加载数据（恢复）</button>
-        <button class="sp-action-btn" @click="handleImage">生成播放记录</button>
         <button class="sp-action-btn sp-danger" @click="handleClearAll">清除所有数据</button>
         <button class="sp-action-btn" @click="showAbout = true">关于 Rhizome</button>
       </div>
@@ -67,6 +83,31 @@
       <!-- 右列：均衡器 -->
       <!-- 右列 -->
       <div class="sp-col">
+
+      <!-- 报告卡片 -->
+      <div class="report-card">
+        <div class="report-card-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M7 8h10M7 12h4M7 16h2"/></svg>
+          <span>播放记录报告</span>
+        </div>
+        <div class="report-types">
+          <button v-for="t in reportTypes" :key="t.key" class="report-type-btn" :class="{ active: reportType === t.key }" @click="reportType = reportType === t.key ? null : t.key">
+            <span class="report-type-icon">{{ t.icon }}</span>
+            <span class="report-type-label">{{ t.label }}</span>
+          </button>
+        </div>
+        <div class="report-info" v-if="reportStats.total > 0">
+          <span>{{ reportStats.total }} 次播放 · {{ reportStats.songs }} 首歌</span>
+        </div>
+        <div class="report-info" v-else>
+          <span class="report-empty">暂无播放数据</span>
+        </div>
+        <button class="report-generate-btn" @click="handleGenerateReport" :disabled="reportStats.total === 0">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          {{ reportType ? '生成' + (reportTypes.find(t => t.key === reportType)?.label || '') : '生成今日报告' }}
+        </button>
+      </div>
+
       <!-- ═══ 均衡器（暂未启用） ═══
       <div class="sp-section-title sp-section-first">
         <span>均衡器</span>
@@ -162,16 +203,20 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { usePageEnter } from '@/composables/usePageEnter'
 import { useGlobalTheme } from '@/composables/useGlobalTheme'
 import { useLocalMusicStore } from '@/stores/localMusicStore'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useAudioDevice } from '@/composables/useAudioDevice'
-import { isWeeklyEnabled, setWeeklyEnabled } from '@/composables/useWeeklyPlaylists'
+import { isWeeklyEnabled, setWeeklyEnabled, checkAndGenerateWeekly } from '@/composables/useWeeklyPlaylists'
 import { generateReportBlob } from '@/composables/useReportGenerator'
 import { getActionDefs, getShortcutConfig, comboLabel, updateShortcut, resetShortcuts } from '@/composables/useShortcuts'
 import { useActionChain, ACTION_TYPES } from '@/composables/useActionChain'
+import { useDeleteConfirm } from '@/composables/useDeleteConfirm'
+import { useLyricOffset } from '@/composables/useLyricOffset'
 import AboutModal from '@/components/common/AboutModal.vue'
+import { K_LYRIC_SIZE, K_LYRIC_ALIGN, K_REPORT_PATH, K_PLAY_COUNT_REAL } from '@/constants/storage-keys'
 
 const { themeClass } = useGlobalTheme()
 const localStore = useLocalMusicStore()
@@ -180,7 +225,9 @@ const { devices: audioDevices, selectedId: audioDeviceId, select: selectDevice, 
 const { chains: acChains, add: acAdd, update: acUpdate, remove: acRemove, execute: acExecute } = useActionChain()
 
 const msg = ref('')
-const entered = ref(false)
+const { entered, staggerStyle, triggerEnter } = usePageEnter();
+const { requiredCount, setRequiredCount, DELETE_CONFIRM_OPTIONS, confirmHardDelete } = useDeleteConfirm();
+const { offsetMs: lyricOffset } = useLyricOffset();
 const showAbout = ref(false)
 const showShortcuts = ref(false)
 const showActions = ref(false)
@@ -211,14 +258,30 @@ function saveChain() {
 function removeChain(id) { acRemove(id) }
 function executeChain(c) { acExecute(c) }
 
-const lyricSize = ref(Number(localStorage.getItem('rhizome-lyric-size') || 14))
-const lyricAlign = ref(localStorage.getItem('rhizome-lyric-align') || 'center')
+const lyricSize = ref(Number(localStorage.getItem(K_LYRIC_SIZE) || 14))
+const lyricAlign = ref(localStorage.getItem(K_LYRIC_ALIGN) || 'center')
 const autoLaunch = ref(false)
 const weeklyEnabled = ref(isWeeklyEnabled())
-const reportPath = ref(localStorage.getItem('rhizome-report-path') || '')
+const reportPath = ref(localStorage.getItem(K_REPORT_PATH) || '')
+const reportType = ref(null)
+const reportTypes = [
+  { key: 'weekly', label: '周报', icon: 'W' },
+  { key: 'monthly', label: '月报', icon: 'M' },
+  { key: 'yearly', label: '年报', icon: 'Y' },
+]
+const reportStats = computed(() => {
+  const map = JSON.parse(localStorage.getItem(K_PLAY_COUNT_REAL) || '{}')
+  const entries = Object.entries(map)
+  return {
+    total: entries.reduce((s, [, c]) => s + c, 0),
+    songs: entries.length,
+  }
+})
 
-function changeLyricSize(d) { lyricSize.value = Math.max(10, Math.min(18, lyricSize.value + d)); localStorage.setItem('rhizome-lyric-size', lyricSize.value) }
-function setLyricAlign(a) { lyricAlign.value = a; localStorage.setItem('rhizome-lyric-align', a) }
+function changeLyricSize(d) { lyricSize.value = Math.max(10, Math.min(18, lyricSize.value + d)); localStorage.setItem(K_LYRIC_SIZE, lyricSize.value) }
+function setLyricAlign(a) { lyricAlign.value = a; localStorage.setItem(K_LYRIC_ALIGN, a) }
+function changeLyricOffset(d) { lyricOffset.value = Math.max(-2000, Math.min(2000, lyricOffset.value + d)) }
+function saveLyricOffset() {} // useLyricOffset 自动持久化，这里空函数给归零按钮用
 
 async function toggleAutoLaunch() {
   autoLaunch.value = !autoLaunch.value
@@ -228,6 +291,9 @@ async function toggleAutoLaunch() {
 function toggleWeekly() {
   weeklyEnabled.value = !weeklyEnabled.value
   setWeeklyEnabled(weeklyEnabled.value)
+  if (weeklyEnabled.value) {
+    checkAndGenerateWeekly(localStore.songList)
+  }
 }
 
 function onDeviceChange() {
@@ -238,7 +304,7 @@ function onDeviceChange() {
 
 async function selectReportDir() {
   const dir = await window.electron?.selectReportDir?.()
-  if (dir) { reportPath.value = dir; localStorage.setItem('rhizome-report-path', dir) }
+  if (dir) { reportPath.value = dir; localStorage.setItem(K_REPORT_PATH, dir) }
 }
 
 function resetSC() {
@@ -291,21 +357,40 @@ async function handleRestore() {
   else msg.value = '恢复失败或取消'
   setTimeout(() => msg.value = '', 2000)
 }
-async function handleImage() {
-  const blob = await generateReportBlob(playerStore, localStore)
+async function handleGenerateReport() {
+  const songs = localStore.songList.map(s => {
+    const map = JSON.parse(localStorage.getItem(K_PLAY_COUNT_REAL) || '{}')
+    return { ...s, playCount: map[s.path] || 0 }
+  })
+  const now = new Date()
+  let title, subtitle, fn
+  if (reportType.value) {
+    const tMap = { weekly: ['Rhizome 周报', '本周'], monthly: ['Rhizome 月报', '本月'], yearly: ['Rhizome 年报', '本年度'] }
+    const [t, d] = tMap[reportType.value]
+    title = t; subtitle = d
+    const extMap = { weekly: 'W', monthly: 'M', yearly: 'Y' }
+    fn = `rhizome-${extMap[reportType.value]}-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.png`
+  } else {
+    title = 'Rhizome 今日报告'
+    subtitle = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')}`
+    fn = `rhizome-daily-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.png`
+  }
+  const blob = await generateReportBlob(songs, themeClass.value === 'theme-dark', title, subtitle)
   if (!blob) { msg.value = '无播放数据可生成'; setTimeout(() => msg.value = '', 1500); return }
   const dir = reportPath.value
   if (!dir) { msg.value = '请先设置报告路径'; setTimeout(() => msg.value = '', 1500); return }
   const reader = new FileReader()
   reader.onload = async () => {
     const b64 = reader.result.split(',')[1]
-    const ok = await window.electron?.saveReportFile?.(dir, `rhizome-report-${Date.now()}.png`, b64)
+    const ok = await window.electron?.saveReportFile?.(dir, fn, b64)
     msg.value = ok ? '报告已保存' : '保存失败'
     setTimeout(() => msg.value = '', 2000)
+    if (ok) window.electron?.openPath?.(dir)
   }
   reader.readAsDataURL(blob)
 }
 async function handleClearAll() {
+  if (!confirmHardDelete()) return
   await window.electron?.clearAllData?.()
   localStorage.clear()
   msg.value = '数据已清除，即将刷新'
@@ -315,7 +400,7 @@ async function handleClearAll() {
 onMounted(async () => {
   autoLaunch.value = await window.electron?.getAutoLaunch?.() || false
   window.addEventListener('keydown', onKeydown, true)
-  requestAnimationFrame(() => { entered.value = true })
+  triggerEnter()
 })
 onUnmounted(() => { window.removeEventListener('keydown', onKeydown, true) })
 </script>
@@ -366,11 +451,56 @@ onUnmounted(() => { window.removeEventListener('keydown', onKeydown, true) })
 .entered .sp-section-title { opacity: 1; transform: translateX(0); }
 .sp-title-actions { display: flex; align-items: center; gap: 6px; }
 
+/* ═══ 报告卡片 ═══ */
+.report-card {
+  margin: 16px 0 8px; padding: 16px;
+  border: 2px solid var(--border-color);
+  opacity: 0; transform: translateX(-20px);
+  transition: opacity 0.15s cubic-bezier(0.2,0,0.2,1), transform 0.15s cubic-bezier(0.2,0,0.2,1);
+  transition-delay: 0.38s;
+}
+.entered .report-card { opacity: 1; transform: translateX(0); }
+.report-card-header {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; font-weight: 600; margin-bottom: 12px;
+}
+.report-card-header svg { width: 18px; height: 18px; opacity: 0.7; }
+.report-types {
+  display: flex; gap: 4px; margin-bottom: 10px;
+}
+.report-type-btn {
+  flex: 1; height: 36px; border: 2px solid var(--border-color);
+  background: var(--bg-secondary); color: var(--text-primary);
+  cursor: pointer; font-size: 11px; font-family: monospace;
+  display: flex; align-items: center; gap: 6px; padding: 0 10px;
+  transition: all 0.2s;
+}
+.report-type-btn:hover { background: var(--btn-hover-bg); color: var(--btn-hover-text); }
+.report-type-btn.active { background: var(--btn-hover-bg); color: var(--btn-hover-text); }
+.report-type-icon {
+  font-size: 14px; font-weight: 700; width: 20px; text-align: center;
+}
+.report-info {
+  font-size: 11px; opacity: 0.6; margin-bottom: 10px;
+  font-family: monospace;
+}
+.report-empty { color: #e74c3c; }
+.report-generate-btn {
+  width: 100%; height: 36px; border: 2px solid var(--border-color);
+  background: var(--btn-hover-bg); color: var(--btn-hover-text);
+  font-size: 13px; font-family: monospace; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: all 0.2s;
+}
+.report-generate-btn:hover { opacity: 0.85; }
+.report-generate-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.report-generate-btn svg { width: 16px; height: 16px; }
+
 /* ═══ 操作按钮 ═══ */
 .sp-actions { display: flex; flex-direction: column; gap: 6px; padding-top: 20px; }
-.sp-action-btn { width: 100%; height: 34px; border: 2px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 12px; font-family: monospace; cursor: pointer; text-align: left; padding: 0 14px; opacity: 0; transform: scaleX(0); transition: opacity 0.12s ease, transform 0.13s cubic-bezier(0.25,0,0,1), background 0.2s, color 0.2s; }
+.sp-action-btn { width: 100%; height: 34px; border: 2px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 12px; font-family: monospace; cursor: pointer; text-align: left; padding: 0 14px; opacity: 0; transform: scaleX(0); transition: opacity 0.12s ease, transform 0.13s cubic-bezier(0.25,0,0,1); }
 .entered .sp-action-btn { opacity: 1; transform: scaleX(1); }
-.sp-action-btn:hover { background: var(--btn-hover-bg); color: var(--btn-hover-text); }
+.sp-action-btn:hover { background: var(--btn-hover-bg); color: var(--btn-hover-text); transition: background 0.2s, color 0.2s; }
 .sp-danger:hover { background: #f44336; color: #fff; border-color: #f44336; }
 
 /* ═══ 快捷键表格 ═══ */
@@ -426,10 +556,5 @@ onUnmounted(() => { window.removeEventListener('keydown', onKeydown, true) })
 .ss-inline-table .ss-row:nth-child(7) { transition-delay: 0.42s; }
 .ss-inline-table .ss-row:nth-child(8) { transition-delay: 0.44s; }
 .ss-inline-table .ss-row:nth-child(9) { transition-delay: 0.46s; }
-.sp-action-btn:nth-child(1) { transition-delay: 0.38s; }
-.sp-action-btn:nth-child(2) { transition-delay: 0.41s; }
-.sp-action-btn:nth-child(3) { transition-delay: 0.44s; }
-.sp-action-btn:nth-child(4) { transition-delay: 0.47s; }
-.sp-action-btn:nth-child(5) { transition-delay: 0.50s; }
 .sp-footer { transition-delay: 0.55s; }
 </style>

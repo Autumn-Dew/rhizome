@@ -1,5 +1,4 @@
-const WEEKLY_KEY = 'rhizome-weekly-playlists'
-const ENABLED_KEY = 'rhizome-weekly-playlists-enabled'
+import { K_WEEKLY_PLAYLISTS, K_WEEKLY_ENABLED, K_LOCAL_PLAYLISTS, K_PLAYLIST_SONGS, K_PLAY_HISTORY_VIEW, K_PLAY_COUNT_REAL } from '@/constants/storage-keys'
 
 function getWeekKey() {
   const now = new Date()
@@ -12,11 +11,11 @@ function getWeekKey() {
 }
 
 export function isWeeklyEnabled() {
-  return localStorage.getItem(ENABLED_KEY) === 'true'
+  return localStorage.getItem(K_WEEKLY_ENABLED) === 'true'
 }
 
 export function setWeeklyEnabled(val) {
-  localStorage.setItem(ENABLED_KEY, String(!!val))
+  localStorage.setItem(K_WEEKLY_ENABLED, String(!!val))
 }
 
 export function checkAndGenerateWeekly(songList) {
@@ -24,18 +23,18 @@ export function checkAndGenerateWeekly(songList) {
   if (!songList || !songList.length) return null
 
   const weekKey = getWeekKey()
-  const meta = JSON.parse(localStorage.getItem(WEEKLY_KEY) || '{}')
+  const meta = JSON.parse(localStorage.getItem(K_WEEKLY_PLAYLISTS) || '{}')
 
   if (meta.weekKey === weekKey) return null // Already generated this week
 
   // Double-check: does a playlist with this week's ID already exist?
-  const existingPlaylists = JSON.parse(localStorage.getItem('local_playlists') || '[]')
+  const existingPlaylists = JSON.parse(localStorage.getItem(K_LOCAL_PLAYLISTS) || '[]')
   if (existingPlaylists.some(p => p.localId === `__weekly_top__${weekKey}`)) return null
 
   try {
     // Get play history with timestamps
-    const history = JSON.parse(localStorage.getItem('playHistoryView') || '[]')
-    const countMap = JSON.parse(localStorage.getItem('playCountReal') || '{}')
+    const history = JSON.parse(localStorage.getItem(K_PLAY_HISTORY_VIEW) || '[]')
+    const countMap = JSON.parse(localStorage.getItem(K_PLAY_COUNT_REAL) || '{}')
 
     // Current week's start (Monday 00:00)
     const now = new Date()
@@ -77,8 +76,8 @@ export function checkAndGenerateWeekly(songList) {
     }
 
     // Save as playlists
-    const playlists = JSON.parse(localStorage.getItem('local_playlists') || '[]')
-    const songsMap = JSON.parse(localStorage.getItem('local_playlist_songs') || '{}')
+    const playlists = JSON.parse(localStorage.getItem(K_LOCAL_PLAYLISTS) || '[]')
+    const songsMap = JSON.parse(localStorage.getItem(K_PLAYLIST_SONGS) || '{}')
 
     // Remove ALL existing weekly playlists from the main list (we'll re-add only recent 4)
     const nonWeekly = playlists.filter(p => !p.localId?.startsWith('__weekly_top__') && !p.localId?.startsWith('__weekly_discovery__'))
@@ -132,9 +131,9 @@ export function checkAndGenerateWeekly(songList) {
       }
     }
 
-    localStorage.setItem('local_playlists', JSON.stringify(final))
-    localStorage.setItem('local_playlist_songs', JSON.stringify(songsMap))
-    localStorage.setItem(WEEKLY_KEY, JSON.stringify({ weekKey }))
+    localStorage.setItem(K_LOCAL_PLAYLISTS, JSON.stringify(final))
+    localStorage.setItem(K_PLAYLIST_SONGS, JSON.stringify(songsMap))
+    localStorage.setItem(K_WEEKLY_PLAYLISTS, JSON.stringify({ weekKey }))
 
     return result
   } catch (e) {

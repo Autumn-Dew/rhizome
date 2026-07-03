@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { K_LOCAL_MUSIC_LIST, K_LOCAL_MUSIC_FOLDERS, K_SONG_CACHE } from '@/constants/storage-keys'
 
 // 本地音乐库：歌曲列表、文件夹管理、路径持久化
 const api = () => window.electron
@@ -23,12 +24,12 @@ export const useLocalMusicStore = defineStore('localMusic', {
                     api_?.loadMusicFolders?.() ?? Promise.resolve(null),
                 ])
                 // IPC 不可用则回退 localStorage
-                const p = (paths !== null) ? paths : this._readLocal('local-music-list', [])
-                const f = (folders !== null) ? (folders || []) : this._readLocal('local-music-folders', [])
+                const p = (paths !== null) ? paths : this._readLocal(K_LOCAL_MUSIC_LIST, [])
+                const f = (folders !== null) ? (folders || []) : this._readLocal(K_LOCAL_MUSIC_FOLDERS, [])
                 this.folders = f
 
                 if (!p.length) {
-                    const legacy = this._readLocal('local-music-list', [])
+                    const legacy = this._readLocal(K_LOCAL_MUSIC_LIST, [])
                     if (legacy.length) { await this._savePaths(legacy); p.push(...legacy) }
                 }
 
@@ -71,6 +72,7 @@ export const useLocalMusicStore = defineStore('localMusic', {
                 }
                 console.log(`[localMusic] 成功解析 ${results.length} 个文件`)
                 this.songList = results
+                this._saveSongCache()
                 this.loaded = true
             } catch (e) {
                 console.error('[localMusic] 加载失败', e)
@@ -85,6 +87,40 @@ export const useLocalMusicStore = defineStore('localMusic', {
             try { const d = localStorage.getItem(key); return d ? JSON.parse(d) : fallback } catch { return fallback }
         },
 
+        // 保存轻量元数据缓存（去掉封面/歌词等大字段，供备份恢复使用）
+        _saveSongCache() {
+            try {
+                const light = this.songList.map(s => ({
+                    path: s.path, name: s.name, singer: s.singer,
+                    album: s.album, year: s.year, genre: s.genre,
+                    track: s.track, composer: s.composer,
+                    duration: s.duration, durationFormat: s.durationFormat,
+                    songKey: s.songKey, bitrate: s.bitrate,
+                    sampleRate: s.sampleRate, channels: s.channels, codec: s.codec,
+                }))
+                localStorage.setItem(K_SONG_CACHE, JSON.stringify(light))
+            } catch {}
+        },
+
+        // 恢复时合并缓存：对于文件不存在的歌曲，用缓存的元数据显示（灰色+删除线）
+        mergeSongCache() {
+            try {
+                const cache = JSON.parse(localStorage.getItem(K_SONG_CACHE) || '[]')
+                if (!cache.length) return
+                const existingPaths = new Set(this.songList.map(s => s.path))
+                const merged = []
+                for (const c of cache) {
+                    if (!existingPaths.has(c.path)) {
+                        merged.push({ ...c, playUrl: c.path, exists: false, coverUrl: '', lyrics: [], syncedLyrics: [] })
+                    }
+                }
+                if (merged.length) {
+                    this.songList = [...this.songList, ...merged]
+                    this._saveCurrentPaths()
+                }
+            } catch {}
+        },
+
         async migrateIfNeeded() {
             // 只在文件数据为空时才从 localStorage 迁移
             const api_ = api()
@@ -92,15 +128,15 @@ export const useLocalMusicStore = defineStore('localMusic', {
                 const existing = await api_.loadMusicPaths()
                 if (existing && existing.length > 0) return  // 已有文件数据，跳过迁移
             }
-            const paths = this._readLocal('local-music-list', [])
-            const folders = this._readLocal('local-music-folders', [])
+            const paths = this._readLocal(K_LOCAL_MUSIC_LIST, [])
+            const folders = this._readLocal(K_LOCAL_MUSIC_FOLDERS, [])
             if (paths.length) {
                 await this._savePaths(paths)
                 if (folders.length) {
                     await api_?.saveMusicFolders?.(folders)
-                    try { localStorage.removeItem('local-music-folders') } catch {}
+                    try { localStorage.removeItem(K_LOCAL_MUSIC_FOLDERS) } catch {}
                 }
-                try { localStorage.removeItem('local-music-list') } catch {}
+                try { localStorage.removeItem(K_LOCAL_MUSIC_LIST) } catch {}
             }
         },
 
@@ -110,7 +146,7 @@ export const useLocalMusicStore = defineStore('localMusic', {
                 const plain = [...paths]
                 const api_ = api()
                 if (api_?.saveMusicPaths) { await api_.saveMusicPaths(plain) }
-                else { localStorage.setItem('local-music-list', JSON.stringify(plain)) }
+                else { localStorage.setItem(K_LOCAL_MUSIC_LIST, JSON.stringify(plain)) }
                 console.log(`[localMusic] 已保存 ${plain.length} 个路径`)
             } catch (e) { console.error('[localMusic] 保存路径失败', e) }
         },
@@ -120,11 +156,11 @@ export const useLocalMusicStore = defineStore('localMusic', {
                 const plain = JSON.parse(JSON.stringify(this.folders))
                 const api_ = api()
                 if (api_?.saveMusicFolders) { await api_.saveMusicFolders(plain) }
-                else { localStorage.setItem('local-music-folders', JSON.stringify(plain)) }
+                else { localStorage.setItem(K_LOCAL_MUSIC_FOLDERS, JSON.stringify(plain)) }
                 console.log(`[localMusic] 已保存 ${plain.length} 个文件夹`)
             } catch (e) {
                 console.error('[localMusic] 保存文件夹失败', e)
-                try { localStorage.setItem('local-music-folders', JSON.stringify(this.folders)) } catch {}
+                try { localStorage.setItem(K_LOCAL_MUSIC_FOLDERS, JSON.stringify(this.folders)) } catch {}
             }
         },
 

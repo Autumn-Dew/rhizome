@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
+import { K_PLAY_MODE, K_VOLUME, K_PLAYER_STATE, K_AUDIO_DEVICE, K_PLAY_HISTORY_VIEW, K_PLAY_HISTORY_FULL, K_PLAY_COUNT_REAL } from '@/constants/storage-keys'
+import { PLAY_MODE_ICONS, PLAY_MODES } from '@/constants/defaults'
 
 // 播放器核心：当前歌曲、播放状态、播放列表、播放模式、音量
 
@@ -10,17 +12,10 @@ export const usePlayerStore = defineStore('player', () => {
     const duration = ref(0)
     const playList = ref([])
 
-    const savedMode = localStorage.getItem('rhizome-play-mode')
+    const savedMode = localStorage.getItem(K_PLAY_MODE)
     const playMode = ref(savedMode || 'list')
 
-    const modeMap = {
-        list: 'M4 7h14 M4 12h12 M4 17h16',
-        single: 'M12 7v10 M9 16h6',
-        listLoop: 'M6 6h12v12H6z M16 6l2 2-2 2 M8 18l-2-2 2-2',
-        singleLoop: 'M6 6h12v12H6z M16 6l2 2-2 2 M8 18l-2-2 2-2 M12 9v6 M10 14h4',
-        random: 'M4 8h8v6h8 M20 16h-8v-6H4',
-    }
-    const modeIcon = ref(modeMap[playMode.value])
+    const modeIcon = ref(PLAY_MODE_ICONS[playMode.value])
 
     // ========== 伪随机播放（Fisher-Yates shuffle） ==========
     const shuffleOrder = ref([])
@@ -56,17 +51,17 @@ export const usePlayerStore = defineStore('player', () => {
         lastRecordPath.value = song.path
         try {
             // 最近 30 条（现有逻辑）
-            const history = JSON.parse(localStorage.getItem('playHistoryView') || '[]')
+            const history = JSON.parse(localStorage.getItem(K_PLAY_HISTORY_VIEW) || '[]')
             const filtered = history.filter(x => x.path !== song.path)
             filtered.unshift({ path: song.path, playAt: Date.now() })
             if (filtered.length > 30) filtered.splice(30)
-            localStorage.setItem('playHistoryView', JSON.stringify(filtered))
+            localStorage.setItem(K_PLAY_HISTORY_VIEW, JSON.stringify(filtered))
 
             // 全量历史（新增）
-            const full = JSON.parse(localStorage.getItem('playHistoryFull') || '[]')
+            const full = JSON.parse(localStorage.getItem(K_PLAY_HISTORY_FULL) || '[]')
             full.push({ path: song.path, playAt: Date.now(), duration: song.duration || 0 })
             if (full.length > 10000) full.splice(0, full.length - 10000)
-            localStorage.setItem('playHistoryFull', JSON.stringify(full))
+            localStorage.setItem(K_PLAY_HISTORY_FULL, JSON.stringify(full))
         } catch (e) {}
     }
 
@@ -75,9 +70,10 @@ export const usePlayerStore = defineStore('player', () => {
         if (lastCountedSong.value === song.path) return
         lastCountedSong.value = song.path
         try {
-            const map = JSON.parse(localStorage.getItem('playCountReal') || '{}')
-            map[song.path] = (map[song.path] || 0) + 1
-            localStorage.setItem('playCountReal', JSON.stringify(map))
+            const map = JSON.parse(localStorage.getItem(K_PLAY_COUNT_REAL) || '{}')
+            const newCount = (map[song.path] || 0) + 1
+            map[song.path] = newCount
+            localStorage.setItem(K_PLAY_COUNT_REAL, JSON.stringify(map))
         } catch (e) {}
     }
 
@@ -136,7 +132,9 @@ export const usePlayerStore = defineStore('player', () => {
     }
 
     const volume = ref(1.0)
-    const STORAGE_KEY = 'rhizome-player-state'
+    const abLoop = ref(false)
+    const loopA = ref(null)
+    const loopB = ref(null)
 
     const savePlayerState = () => {
         if (!currentSong.value?.path) return
@@ -149,7 +147,7 @@ export const usePlayerStore = defineStore('player', () => {
                 playMode: playMode.value,
                 playlistPaths: playList.value.map(s => s.path).filter(Boolean),
             }
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+            localStorage.setItem(K_PLAYER_STATE, JSON.stringify(state))
         } catch {}
     }
 
@@ -183,7 +181,7 @@ export const usePlayerStore = defineStore('player', () => {
         const v = Math.max(0, Math.min(1, Number(val) || 0))
         volume.value = v
         if (audio.value) audio.value.volume = v
-        localStorage.setItem('rhizome-volume', v)
+        localStorage.setItem(K_VOLUME, v)
     }
 
     watch(volume, (val) => {
@@ -212,7 +210,7 @@ export const usePlayerStore = defineStore('player', () => {
         audio.value.volume = Math.max(0, Math.min(1, volume.value || 0))
 
         // 音频设备路由
-        const devId = localStorage.getItem('rhizome-audio-device') || ''
+        const devId = localStorage.getItem(K_AUDIO_DEVICE) || ''
         if (devId && audio.value.setSinkId) {
             audio.value.setSinkId(devId).catch(() => {})
         }
@@ -224,6 +222,11 @@ export const usePlayerStore = defineStore('player', () => {
         }
         audio.value.ontimeupdate = () => {
             currentTime.value = audio.value.currentTime || 0
+            // AB 循环检测
+            if (abLoop.value && loopB.value != null && currentTime.value >= loopB.value) {
+                audio.value.currentTime = loopA.value
+                currentTime.value = loopA.value
+            }
             syncMediaState()
         }
         audio.value.onended = () => {
@@ -314,20 +317,18 @@ export const usePlayerStore = defineStore('player', () => {
     }
 
     const toggleMode = () => {
-        const modes = ['list', 'listLoop', 'singleLoop', 'single', 'random']
-        const i = modes.indexOf(playMode.value)
-        playMode.value = modes[(i + 1) % modes.length]
-        modeIcon.value = modeMap[playMode.value]
-        localStorage.setItem('rhizome-play-mode', playMode.value)
+        const i = PLAY_MODES.indexOf(playMode.value)
+        playMode.value = PLAY_MODES[(i + 1) % PLAY_MODES.length]
+        modeIcon.value = PLAY_MODE_ICONS[playMode.value]
+        localStorage.setItem(K_PLAY_MODE, playMode.value)
         if (playMode.value === 'random') regenerateShuffle()
     }
 
     const setPlayMode = (mode) => {
-        const modes = ['list', 'listLoop', 'singleLoop', 'single', 'random']
-        if (!modes.includes(mode)) return
+        if (!PLAY_MODES.includes(mode)) return
         playMode.value = mode
-        modeIcon.value = modeMap[mode]
-        localStorage.setItem('rhizome-play-mode', mode)
+        modeIcon.value = PLAY_MODE_ICONS[mode]
+        localStorage.setItem(K_PLAY_MODE, mode)
         if (mode === 'random') regenerateShuffle()
     }
 
@@ -352,9 +353,19 @@ export const usePlayerStore = defineStore('player', () => {
         }, { immediate: true })
     }
 
+    function toggleABLoop(a, b) {
+        if (abLoop.value) {
+            abLoop.value = false; loopA.value = null; loopB.value = null
+        } else if (a != null && b != null && b > a) {
+            loopA.value = a; loopB.value = b; abLoop.value = true
+            seekTo(a)
+        }
+    }
+
     return {
         currentSong, isPlaying, currentTime, duration,
         playList, playMode, modeIcon, audio, volume,
+        abLoop, loopA, loopB, toggleABLoop,
         setAudioVolume,
         setPlayList, playSongInList, playGlobalSong,
         togglePlay, nextSong, prevSong, toggleMode, setPlayMode, seekTo,

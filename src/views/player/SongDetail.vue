@@ -106,19 +106,24 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+import { usePageEnter } from '@/composables/usePageEnter'
 import { useGlobalTheme } from '@/composables/useGlobalTheme'
 import { usePlayerStore } from '@/stores/playerStore'
+import { useLyricOffset } from '@/composables/useLyricOffset'
+import { formatTime } from '@/utils/format'
+import { resolveLyrics } from '@/utils/lyrics'
 
 const router = useRouter()
 const { themeClass } = useGlobalTheme()
 const playerStore = usePlayerStore()
+const { offsetSeconds } = useLyricOffset()
 
 const currentSong = ref({})
 const lyrics = ref([])
 const currentLine = ref(0)
 const lyricsBox = ref(null)
 const statsRefreshKey = ref(0)
-const entered = ref(false)
+const { entered, staggerStyle } = usePageEnter();
 const switching = ref(false)
 
 onMounted(() => {
@@ -126,7 +131,6 @@ onMounted(() => {
   currentSong.value = playerStore.currentSong
   parseLyrics()
   resetLyrics()
-  requestAnimationFrame(() => { entered.value = true })
   updateLyricProgress()
 })
 
@@ -147,33 +151,7 @@ watch(() => playerStore.currentSong, (val) => {
 // 歌词解析（优先使用预解析的时间戳数据）
 // ==============================================
 function parseLyrics() {
-  const synced = currentSong.value.syncedLyrics
-  let list = []
-  if (synced && synced.length > 0 && synced.some(l => l.time > 0)) {
-    list = synced
-  } else {
-    const raw = currentSong.value.lyrics || []
-    raw.forEach(line => {
-      const match = line.match(/^\[(\d+):(\d+(?:\.\d+)?)\](.*)$/)
-      if (match) {
-        const time = Number(match[1]) * 60 + Number(match[2])
-        list.push({ time, text: match[3].trim() })
-      } else {
-        list.push({ time: 999999, text: line })
-      }
-    })
-    list.sort((a, b) => a.time - b.time)
-  }
-  // 合并相同时间戳的歌词（原词+翻译）
-  const merged = []
-  for (let i = 0; i < list.length; i++) {
-    if (i > 0 && list[i].time === list[i - 1].time) {
-      merged[merged.length - 1].text += '\n' + list[i].text
-    } else {
-      merged.push({ time: list[i].time, text: list[i].text })
-    }
-  }
-  lyrics.value = merged
+  lyrics.value = resolveLyrics(currentSong.value)
 }
 
 // ==============================================
@@ -332,10 +310,7 @@ function scrollToCenter() {
     const elHeight = activeEl.offsetHeight
     const scrollTop = activeEl.offsetTop - (boxHeight - elHeight) / 2
 
-    box.scrollTo({
-      top: scrollTop,
-      behavior: 'smooth'
-    })
+    box.scrollTo({ top: scrollTop, behavior: 'smooth' })
   }, 50)
 }
 
@@ -346,9 +321,10 @@ watch(() => playerStore.currentTime, (now) => {
   const list = lyrics.value
   if (!list.length) return
   if (list.every(l => l.time >= 999999)) { currentLine.value = -1; return }
-  if (now < 0.1) { currentLine.value = 0; return }
+  const adjusted = now + offsetSeconds()
+  if (adjusted < 0.1) { currentLine.value = 0; return }
   let idx = 0
-  for (let i = 0; i < list.length; i++) { if (list[i].time <= now) idx = i }
+  for (let i = 0; i < list.length; i++) { if (list[i].time <= adjusted) idx = i }
   currentLine.value = idx
 }, { flush: 'post' })
 
@@ -401,13 +377,6 @@ const onDetailWheel = (e) => {
   const delta = e.deltaY > 0 ? -2 : 2
   const newTime = Math.max(0, Math.min(playerStore.duration, playerStore.currentTime + delta))
   playerStore.seekTo(newTime)
-}
-
-const formatTime = (s) => {
-  if (!s) return '00:00'
-  const m = Math.floor(s / 60)
-  const sc = Math.floor(s % 60)
-  return `${String(m).padStart(2, '0')}:${String(sc).padStart(2, '0')}`
 }
 
 const goBack = () => router.back()
@@ -843,14 +812,24 @@ const goBack = () => router.back()
 }
 
 .lyrics-section {
-  flex: 1;
-  min-width: 0;
+  flex: 1; min-width: 0;
   opacity: 0;
   transition: opacity 0.15s ease 0.3s;
 }
 .entered .lyrics-section {
   opacity: 1;
 }
+
+.lyrics-fullscreen-btn {
+  position: absolute; top: 0; right: 0;
+  width: 28px; height: 28px;
+  border: 2px solid var(--border-color);
+  background: var(--bg-secondary); color: var(--text-primary);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s; z-index: 5;
+}
+.lyrics-fullscreen-btn:hover { background: var(--btn-hover-bg); color: var(--btn-hover-text); }
+.lyrics-fullscreen-btn svg { width: 14px; height: 14px; }
 
 /* 外层固定四角边框 */
 .lyrics-frame {
@@ -1094,5 +1073,89 @@ const goBack = () => router.back()
   .detail-container {
     padding: 16px;
   }
+}
+</style>
+
+<style>
+.lyrics-fullscreen {
+  position: fixed; inset: 0; z-index: 9999;
+  background: var(--bg-primary);
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* 取景框 — 1:1 复刻 .lyrics-frame */
+.lyrics-fullscreen-frame {
+  width: 100%; max-width: 800px;
+  height: calc(100vh - 120px);
+  position: relative;
+  border: 2px solid transparent;
+}
+.lyrics-fullscreen-frame::before {
+  content: '';
+  position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  --p: var(--border-progress, 0);
+  background:
+    linear-gradient(to right, transparent calc((1 - var(--p)) * 50%), var(--border-color) 0, var(--border-color) calc((1 + var(--p)) * 50%), transparent 0) top / 100% 2px no-repeat,
+    linear-gradient(to right, transparent calc((1 - var(--p)) * 50%), var(--border-color) 0, var(--border-color) calc((1 + var(--p)) * 50%), transparent 0) bottom / 100% 2px no-repeat,
+    linear-gradient(to bottom, transparent calc((1 - var(--p)) * 50%), var(--border-color) 0, var(--border-color) calc((1 + var(--p)) * 50%), transparent 0) left / 2px 100% no-repeat,
+    linear-gradient(to bottom, transparent calc((1 - var(--p)) * 50%), var(--border-color) 0, var(--border-color) calc((1 + var(--p)) * 50%), transparent 0) right / 2px 100% no-repeat;
+}
+.lyrics-fullscreen-frame::after {
+  content: '';
+  position: absolute; inset: -2px; pointer-events: none;
+  background:
+    linear-gradient(to right, var(--border-color) 24px, transparent 0) left top / 100% 2px no-repeat,
+    linear-gradient(to bottom, var(--border-color) 24px, transparent 0) left top / 2px 100% no-repeat,
+    linear-gradient(to left, var(--border-color) 24px, transparent 0) right top / 100% 2px no-repeat,
+    linear-gradient(to bottom, var(--border-color) 24px, transparent 0) right top / 2px 100% no-repeat,
+    linear-gradient(to right, var(--border-color) 24px, transparent 0) left bottom / 100% 2px no-repeat,
+    linear-gradient(to top, var(--border-color) 24px, transparent 0) left bottom / 2px 100% no-repeat,
+    linear-gradient(to left, var(--border-color) 24px, transparent 0) right bottom / 100% 2px no-repeat,
+    linear-gradient(to top, var(--border-color) 24px, transparent 0) right bottom / 2px 100% no-repeat;
+}
+
+/* 滚动区 */
+.lyrics-fullscreen-wrapper {
+  height: 100%; overflow-y: auto; scroll-behavior: smooth;
+  scrollbar-width: none; -ms-overflow-style: none;
+}
+.lyrics-fullscreen-wrapper::-webkit-scrollbar { display: none; }
+
+.lyrics-fullscreen-container {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: calc(50vh - 60px) 24px;
+  overflow-x: hidden;
+}
+
+/* 单行 — 1:1 复刻 .lyrics-container p */
+.lyrics-fullscreen-container p {
+  font-size: 20px; line-height: 1.5; margin: 0;
+  text-align: center; padding: 8px 64px;
+  transition: all 0.25s; opacity: 0.35;
+  cursor: pointer; position: relative;
+  transform: scale(0.95); white-space: pre-line;
+}
+.lyrics-fullscreen-container p:hover { opacity: 0.7; }
+
+/* 当前行 — 1:1 复刻详情页 */
+.lyrics-fullscreen-container p.active {
+  opacity: 1; font-weight: 700; font-size: 24px;
+  transform: scale(1); color: var(--btn-hover-text);
+}
+.lyrics-fullscreen-container p.active::before {
+  content: ''; position: absolute; inset: 0; z-index: -1;
+  background: var(--btn-hover-bg);
+  transform: scaleX(var(--lyric-progress, 0));
+  transform-origin: left;
+  transition: transform 0.1s linear;
+}
+
+.lyrics-fullscreen-container .empty-lyrics {
+  text-align: center; opacity: 0.4;
+}
+
+.lyrics-fullscreen-hint {
+  position: fixed; bottom: 20px; font-size: 11px; opacity: 0.25;
+  font-family: monospace; pointer-events: none;
 }
 </style>
