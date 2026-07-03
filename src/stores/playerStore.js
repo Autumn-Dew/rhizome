@@ -55,11 +55,18 @@ export const usePlayerStore = defineStore('player', () => {
         if (lastRecordPath.value === song.path) return
         lastRecordPath.value = song.path
         try {
+            // 最近 30 条（现有逻辑）
             const history = JSON.parse(localStorage.getItem('playHistoryView') || '[]')
             const filtered = history.filter(x => x.path !== song.path)
             filtered.unshift({ path: song.path, playAt: Date.now() })
             if (filtered.length > 30) filtered.splice(30)
             localStorage.setItem('playHistoryView', JSON.stringify(filtered))
+
+            // 全量历史（新增）
+            const full = JSON.parse(localStorage.getItem('playHistoryFull') || '[]')
+            full.push({ path: song.path, playAt: Date.now(), duration: song.duration || 0 })
+            if (full.length > 10000) full.splice(0, full.length - 10000)
+            localStorage.setItem('playHistoryFull', JSON.stringify(full))
         } catch (e) {}
     }
 
@@ -173,12 +180,14 @@ export const usePlayerStore = defineStore('player', () => {
     })
 
     const setAudioVolume = (val) => {
-        volume.value = val
-        if (audio.value) audio.value.volume = val
+        const v = Math.max(0, Math.min(1, Number(val) || 0))
+        volume.value = v
+        if (audio.value) audio.value.volume = v
+        localStorage.setItem('rhizome-volume', v)
     }
 
     watch(volume, (val) => {
-        if (audio.value) audio.value.volume = val
+        if (audio.value) audio.value.volume = Math.max(0, Math.min(1, val || 0))
     })
 
     const playGlobalSong = (song) => {
@@ -200,7 +209,13 @@ export const usePlayerStore = defineStore('player', () => {
         currentSong.value = song
 
         audio.value = new Audio(song.playUrl || song.path)
-        audio.value.volume = volume.value
+        audio.value.volume = Math.max(0, Math.min(1, volume.value || 0))
+
+        // 音频设备路由
+        const devId = localStorage.getItem('rhizome-audio-device') || ''
+        if (devId && audio.value.setSinkId) {
+            audio.value.setSinkId(devId).catch(() => {})
+        }
 
         audio.value.onloadedmetadata = () => {
             duration.value = audio.value.duration || 0
@@ -284,7 +299,7 @@ export const usePlayerStore = defineStore('player', () => {
                 shufflePos--
                 prev = shuffleOrder.value[shufflePos]
             } else {
-                prev = idx
+                prev = shuffleOrder.value[0]
             }
         } else {
             prev = (idx - 1 + playList.value.length) % playList.value.length
@@ -307,6 +322,15 @@ export const usePlayerStore = defineStore('player', () => {
         if (playMode.value === 'random') regenerateShuffle()
     }
 
+    const setPlayMode = (mode) => {
+        const modes = ['list', 'listLoop', 'singleLoop', 'single', 'random']
+        if (!modes.includes(mode)) return
+        playMode.value = mode
+        modeIcon.value = modeMap[mode]
+        localStorage.setItem('rhizome-play-mode', mode)
+        if (mode === 'random') regenerateShuffle()
+    }
+
     const seekTo = (time) => {
         if (audio.value) {
             audio.value.currentTime = time
@@ -315,12 +339,25 @@ export const usePlayerStore = defineStore('player', () => {
         }
     }
 
+    // ── 系统托盘信息更新 ──
+    if (typeof window !== 'undefined') {
+        watch([currentSong, isPlaying], () => {
+            const api = window.electron
+            if (!api?.updateTrayInfo) return
+            const song = currentSong.value
+            api.updateTrayInfo({
+                songName: song ? (song.name || song.title || '未知歌曲') : '',
+                isPlaying: isPlaying.value,
+            })
+        }, { immediate: true })
+    }
+
     return {
         currentSong, isPlaying, currentTime, duration,
         playList, playMode, modeIcon, audio, volume,
         setAudioVolume,
         setPlayList, playSongInList, playGlobalSong,
-        togglePlay, nextSong, prevSong, toggleMode, seekTo,
+        togglePlay, nextSong, prevSong, toggleMode, setPlayMode, seekTo,
         savePlayerState,
     }
 })

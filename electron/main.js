@@ -77,34 +77,53 @@ function createTray() {
     const trayIconPath = path.join(__dirname, './icons/img.png')
     tray = new Tray(trayIconPath)
 
-    const contextMenu = Menu.buildFromTemplate([
-        {
-            label: '打开主界面',
-            click: () => {
-                if (win.isMinimized()) win.restore()
-                win.show()
-                win.focus()
-            },
-        },
-        { type: 'separator' },
-        {
-            label: '退出',
-            click: () => {
-                app.isQuitting = true
-                tray.destroy()
-                win.destroy()
-                app.quit()
-            },
-        },
-    ])
-
-    tray.setContextMenu(contextMenu)
     tray.setToolTip('Rhizome · 音乐播放器')
 
     tray.on('click', () => {
         win.isVisible() ? win.hide() : win.show()
     })
+
+    buildTrayMenu()
 }
+
+// 托盘状态
+let traySongName = ''
+let trayIsPlaying = false
+let trayLyricsVisible = false
+
+function buildTrayMenu() {
+    const songLabel = traySongName || '未在播放'
+    const playLabel = trayIsPlaying ? '暂停' : '播放'
+    const lyricsLabel = trayLyricsVisible ? '隐藏桌面歌词' : '显示桌面歌词'
+
+    const menu = Menu.buildFromTemplate([
+        { label: songLabel, enabled: false },
+        { type: 'separator' },
+        { label: '打开主界面', click: () => { if (win.isMinimized()) win.restore(); win.show(); win.focus() } },
+        { type: 'separator' },
+        { label: '上一首', click: () => win?.webContents.send('media-prev') },
+        { label: playLabel, click: () => win?.webContents.send('media-play-pause') },
+        { label: '下一首', click: () => win?.webContents.send('media-next') },
+        { type: 'separator' },
+        { label: '音量 +', click: () => win?.webContents.send('media-vol-up') },
+        { label: '音量 -', click: () => win?.webContents.send('media-vol-down') },
+        { type: 'separator' },
+        { label: lyricsLabel, click: () => win?.webContents.send('toggle-desktop-lyrics') },
+        { type: 'separator' },
+        { label: '退出', click: () => { app.isQuitting = true; tray.destroy(); win.destroy(); app.quit() } },
+    ])
+
+    tray.setContextMenu(menu)
+}
+
+// ── IPC：渲染进程通知托盘更新歌曲/状态 ──
+ipcMain.on('update-tray-info', (_e, data) => {
+    let changed = false
+    if (data.songName !== undefined && data.songName !== traySongName) { traySongName = data.songName; changed = true }
+    if (data.isPlaying !== undefined && data.isPlaying !== trayIsPlaying) { trayIsPlaying = data.isPlaying; changed = true }
+    if (data.lyricsVisible !== undefined && data.lyricsVisible !== trayLyricsVisible) { trayLyricsVisible = data.lyricsVisible; changed = true }
+    if (changed) buildTrayMenu()
+})
 
 // ============================================================
 // 桌面歌词窗口
@@ -590,8 +609,21 @@ function buildAccelerator(combo) {
     return parts.join('+')
 }
 
+function registerActionChainShortcuts() {
+    for (let i = 1; i <= 5; i++) {
+        try {
+            globalShortcut.register('Alt+' + i, () => {
+                win?.webContents.send('action-chain-execute', i - 1)
+            })
+        } catch {}
+    }
+}
+
 ipcMain.handle('update-global-shortcuts', async (e, list) => {
     globalShortcut.unregisterAll()
+    registerActionChainShortcuts()
+    if (!list || !list.length) return true
+    registerActionChainShortcuts()
     if (!list || !list.length) return true
     for (const s of list) {
         try {
@@ -631,6 +663,9 @@ app.whenReady().then(() => {
             })
         } catch {}
     }
+
+    // 动作链全局快捷键
+    registerActionChainShortcuts()
 
     if (process.platform === 'win32') {
         app.on('media-play-pause', () => {

@@ -201,4 +201,10 @@ contextBridge.exposeInMainWorld("electron", {
     selectReportDir: function() { return ipcRenderer.invoke("select-report-dir") },
     openPath: function(p) { return ipcRenderer.invoke("open-path", p) },
     updateDesktopLyrics: function(data) { return ipcRenderer.send("update-desktop-lyrics", data) },
+    // 系统托盘
+    updateTrayInfo: function(data) { return ipcRenderer.send("update-tray-info", data) },
+    // 动作链全局快捷键监听
+    onActionChainExecute: function(cb) {
+      ipcRenderer.on('action-chain-execute', (_e, idx) => cb(idx))
+    },
 })

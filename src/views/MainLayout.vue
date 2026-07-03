@@ -60,6 +60,7 @@ import {useGlobalTheme} from '@/composables/useGlobalTheme'
 import {usePlayerStore} from '@/stores/playerStore'
 import {useLocalMusicStore} from '@/stores/localMusicStore'
 import {useShortcuts} from '@/composables/useShortcuts'
+import {useActionChain} from '@/composables/useActionChain'
 
 import GlobalPlayer from '@/components/player/GlobalPlayer.vue'
 import SelectModal from '@/components/common/SelectModal.vue'
@@ -389,6 +390,15 @@ onMounted(() => {
     } catch {}
   }
 })
+
+// 动作链全局快捷键（主进程 Alt+数字 → IPC 到渲染进程）
+const { execute: acExec, chains: acList } = useActionChain()
+if (window.electron?.onActionChainExecute) {
+  window.electron.onActionChainExecute((index) => {
+    const chain = acList.value[index]
+    if (chain) acExec(chain)
+  })
+}
 
 onUnmounted(() => {
   stopSyncTimer()

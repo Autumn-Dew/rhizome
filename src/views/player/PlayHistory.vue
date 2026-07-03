@@ -1,8 +1,21 @@
 <template>
   <div class="play-history" :class="[themeClass, { entered: entered }]">
     <div class="history-header">
-      <h2>播放历史</h2>
-      <p class="desc">仅显示本地歌曲播放记录</p>
+      <div class="header-row">
+        <div>
+          <h2>播放历史</h2>
+          <p class="desc">仅显示本地歌曲播放记录</p>
+        </div>
+        <button class="tl-entry-btn" @click="goTimeline" title="音乐时间线">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 12h18M3 6h18M3 18h10"/>
+            <circle cx="8" cy="6" r="1.5"/>
+            <circle cx="14" cy="12" r="1.5"/>
+            <circle cx="10" cy="18" r="1.5"/>
+          </svg>
+          <span>时间线</span>
+        </button>
+      </div>
     </div>
 
     <div class="song-list">
@@ -49,6 +62,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from "vue";
+import { useRouter } from "vue-router";
 import { useGlobalTheme } from "@/composables/useGlobalTheme";
 import { usePlayerStore } from "@/stores/playerStore";
 import { useLocalMusicStore } from "@/stores/localMusicStore";
@@ -56,6 +70,7 @@ import { useCurrentSongHighlight } from "@/composables/useCurrentSongHighlight";
 import FavoriteButton from "@/components/common/FavoriteButton.vue";
 
 const { themeClass } = useGlobalTheme();
+const router = useRouter();
 const playerStore = usePlayerStore();
 const localMusicStore = useLocalMusicStore();
 const { isCurrentSong } = useCurrentSongHighlight();
@@ -103,6 +118,10 @@ const clearHistory = () => {
 const refreshHistory = () => {
   const d = localStorage.getItem("playHistoryView");
   rawHistory.value = d ? JSON.parse(d) : [];
+};
+
+const goTimeline = () => {
+  router.push('/player/timeline')
 };
 
 onMounted(() => {
@@ -159,6 +178,36 @@ onMounted(() => {
 .history-header h2 {
   font-size: 20px;
   margin: 0 0 4px;
+}
+
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.tl-entry-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 2px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: monospace;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.tl-entry-btn:hover {
+  background: var(--btn-hover-bg);
+  color: var(--btn-hover-text);
+}
+.tl-entry-btn svg {
+  width: 15px;
+  height: 15px;
 }
 
 .desc {

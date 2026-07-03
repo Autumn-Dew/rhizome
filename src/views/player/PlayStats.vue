@@ -351,12 +351,4 @@ onMounted(() => {
 .song-item:nth-child(23) { transition-delay: 0.746s; }
 .song-item:nth-child(24) { transition-delay: 0.769s; }
 .song-item:nth-child(25) { transition-delay: 0.792s; }
-.song-item:nth-child(18) { transition-delay: 0.856s; }
-.song-item:nth-child(19) { transition-delay: 0.884s; }
-.song-item:nth-child(20) { transition-delay: 0.912s; }
-.song-item:nth-child(21) { transition-delay: 0.94s; }
-.song-item:nth-child(22) { transition-delay: 0.968s; }
-.song-item:nth-child(23) { transition-delay: 0.996s; }
-.song-item:nth-child(24) { transition-delay: 1.024s; }
-.song-item:nth-child(25) { transition-delay: 1.052s; }
 </style>

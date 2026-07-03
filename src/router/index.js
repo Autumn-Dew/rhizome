@@ -14,6 +14,8 @@ const PlayHistory = () => import('@/views/player/PlayHistory.vue')
 const PlayStats = () => import('@/views/player/PlayStats.vue')
 const PlaylistDetail = () => import('@/views/player/PlaylistDetail.vue')
 const SongDetail = () => import('@/views/player/SongDetail.vue')
+const MusicTimeline = () => import('@/views/player/MusicTimeline.vue')
+const SettingsPage = () => import('@/views/player/SettingsPage.vue')
 
 // ========== 路由 ==========
 const routes = [
@@ -32,6 +34,8 @@ const routes = [
                     { path: 'playlist', component: MyPlaylist },
                     { path: 'playlist-detail/:id', component: PlaylistDetail },
                     { path: 'detail', component: SongDetail },
+                    { path: 'timeline', component: MusicTimeline },
+                    { path: 'settings', component: SettingsPage },
                     { path: 'history', component: PlayHistory },
                     { path: 'stats', component: PlayStats },
                 ]

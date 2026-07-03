@@ -49,6 +49,13 @@
             </button>
           </div>
         </div>
+        <div class="settings-row">
+          <span class="settings-label">音频输出设备</span>
+          <select class="settings-select" v-model="audioDeviceId" @change="onDeviceChange">
+            <option value="">系统默认</option>
+            <option v-for="d in audioDevices" :key="d.deviceId" :value="d.deviceId">{{ d.label || d.deviceId }}</option>
+          </select>
+        </div>
         <button class="settings-btn" @click="handleBackup">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" stroke-width="2"/></svg>
             <span>保存数据（备份）</span>
@@ -92,10 +99,12 @@ import AboutModal from './AboutModal.vue'
 import ShortcutSettings from './ShortcutSettings.vue'
 import { generateReportBlob } from '@/composables/useReportGenerator'
 import { isWeeklyEnabled, setWeeklyEnabled } from '@/composables/useWeeklyPlaylists'
+import { useAudioDevice } from '@/composables/useAudioDevice'
 
 const emit = defineEmits(['close'])
 const { themeClass } = useGlobalTheme()
 const localStore = useLocalMusicStore()
+const { devices: audioDevices, selectedId: audioDeviceId, select: selectDevice, applyTo } = useAudioDevice()
 const msg = ref('')
 const lyricSize = ref(
   Number(localStorage.getItem('rhizome-lyric-size') || 14)
@@ -128,6 +137,12 @@ const weeklyEnabled = ref(isWeeklyEnabled())
 const toggleWeekly = () => {
   weeklyEnabled.value = !weeklyEnabled.value
   setWeeklyEnabled(weeklyEnabled.value)
+}
+
+const onDeviceChange = () => {
+  selectDevice(audioDeviceId.value)
+  const audio = document.querySelector('audio')
+  if (audio) applyTo(audio)
 }
 
 const changeLyricSize = (delta) => {
@@ -245,6 +260,20 @@ async function handleClearAll() {
   border-color: var(--btn-hover-text);
 }
 .stepper-value { font-size: 13px; font-family: monospace; min-width: 36px; text-align: center; color: var(--text-primary); }
+
+.settings-select {
+  height: 28px; padding: 0 8px;
+  border: 2px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 11px; font-family: monospace;
+  cursor: pointer; outline: none;
+  max-width: 200px;
+}
+.settings-select option {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
 
 .settings-footer { padding: 10px 20px; border-top: 1px solid var(--border-color); font-size: 12px; opacity: .6; text-align: center; }
 </style>

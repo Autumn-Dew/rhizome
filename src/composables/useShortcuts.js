@@ -142,7 +142,7 @@ export function useShortcuts(handlers) {
     }
     // toggleWindow 特殊处理：切换主窗口显隐
     if (ipc?.onToggleWindow) {
-      // 如果 preload 已暴露了 onToggleWindow
+      ipc.onToggleWindow(() => handlers.toggleWindow?.())
     } else {
       // 手动注册自定义事件
       window.addEventListener('toggle-window-custom', () => {

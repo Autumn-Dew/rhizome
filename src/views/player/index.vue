@@ -24,7 +24,7 @@
             <path :d="themeIcon" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
-        <button class="rc-sub-func-btn" @click="showSettings = true">
+        <button class="rc-sub-func-btn" @click="goSettings">
           <svg class="rc-sub-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
             <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" stroke-width="2"/>
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke-width="2"/>
@@ -32,8 +32,6 @@
         </button>
       </div>
     </div>
-
-    <SettingsModal v-if="showSettings" @close="showSettings = false" />
 
     <div class="rc-player-content">
       <router-view />
@@ -45,12 +43,14 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useGlobalTheme } from '@/composables/useGlobalTheme'
-import SettingsModal from '@/components/common/SettingsModal.vue'
 
 const router = useRouter()
 const route = useRoute()
 const { themeClass, isDark, toggleTheme } = useGlobalTheme()
-const showSettings = ref(false)
+
+function goSettings() {
+  router.push('/player/settings')
+}
 
 const themeIcon = 'M12 3v1 M12 20v1 M3 12h1 M20 12h1 M5.64 5.64l.7.7 M17.66 17.66l.7.7 M5.64 18.36l.7-.7 M17.66 6.34l.7-.7 M12 7a5 5 0 1 0 5 5'
 
