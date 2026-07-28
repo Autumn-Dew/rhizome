@@ -22,12 +22,14 @@
 - 桌面歌词（置顶透明窗口，可锁定拖拽、调整字号与对齐）
 - 歌词取景框边框 + 播放进度边框动效
 - 歌词延迟调节（±2000ms，5ms 精度）
+- 桌面歌词背景透明度可调
 - `Ctrl+'` 全局切换桌面歌词
 
 ### 播放
 - 列表 / 循环 / 单曲 / 随机（Fisher-Yates 伪随机不重复）
 - 进度条拖拽 & 滚轮微调 & AB 循环右键设点
 - Media Session 系统控件集成
+- 音频设备路由（热切换 & 热插拔检测）
 
 ### 歌单
 - 自定义歌单（创建 / 编辑 / 排序 / 多选操作）
@@ -49,18 +51,19 @@
 
 ### 界面
 - 暗色 / 亮色主题
-- 全页面统一入场动效 & 列表项 stagger 延迟
+- Sdorica 风格启动动画（锁链、星环、符文、多层光环）
+- 设置页选项卡布局（系统选项 / 快捷键 / 动作链）
+- 全页面精密组装入场动效 & 列表项 stagger 交错延迟
 - 当前播放歌曲反色高亮 & 缺失文件灰色标记
 - 拖拽排序 spring 弹性反馈
 - 删除按钮脉冲加速动效
 
 ### 系统
-- 全局快捷键（可自定义）
+- 全局快捷键（可自定义，本地 + 全局双通道）
 - 动作链（5 组可编程快捷键序列，Alt+1~5 触发）
+- 屏保（空闲自动触发，时间可配 1-60min，复刻启动动画）
 - 开机自启
-- 系统托盘
-- 音频设备热切换
-- 窗口位置/大小记忆
+- 系统托盘增强控制（播放/暂停/上下曲/歌词开关）
 
 ## 开发
 
@@ -105,7 +108,8 @@ rhizome/
 │   ├── components/
 │   │   ├── common/          # FavoriteButton / AboutModal / SelectModal
 │   │   ├── lyrics/          # DesktopLyrics
-│   │   └── player/          # GlobalPlayer / ProgressBar / VolumeControl
+│   │   ├── player/          # GlobalPlayer / ProgressBar / VolumeControl
+│   │   └── splash/          # SplashOverlay（屏保动画）
 │   ├── views/
 │   │   ├── MainLayout.vue   # 主布局
 │   │   └── player/          # 页面组件
@@ -133,7 +137,15 @@ rhizome/
 │   │   ├── usePageEnter.js       # 入场动效
 │   │   ├── useDeleteConfirm.js   # 删除确认
 │   │   ├── useLyricOffset.js     # 歌词延迟
+│   │   ├── useIdleTimeout.js     # 屏保定时状态
+│   │   ├── useIdle.js            # 空闲检测
+│   │   ├── useCurrentSongHighlight.js # 当前曲目高亮
 │   │   └── useColorExtractor.js  # 封面取色
+│   ├── assets/
+│   │   └── css/
+│   │       ├── global-theme.css  # 主题变量 & 全局动效
+│   │       ├── global.css        # 全局样式
+│   │       └── reset.css         # 样式重置
 │   ├── utils/               # 工具函数
 │   │   ├── format.js             # 时间格式化
 │   │   ├── song-factory.js       # 歌曲对象构造
@@ -143,8 +155,8 @@ rhizome/
 │   │   └── defaults.js           # 默认配置
 │   └── router/
 ├── public/
-├── index.html
-├── desktop-lyrics.html
+├── index.html               # 入口（含启动动画）
+├── desktop-lyrics.html      # 桌面歌词窗口入口
 └── package.json
 ```
 
