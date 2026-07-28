@@ -61,14 +61,19 @@ onMounted(async () => {
   const splash = document.getElementById('rhizome-splash')
   if (splash) {
     const elapsed = performance.now()
-    const minShow = 800
+    // 正向动画 ~2.5s，停留 1s 后倒放
+    const minShow = 3500
     const delay = Math.max(0, minShow - elapsed)
     setTimeout(() => {
-      splash.classList.add('hidden')
-      // splash 淡出完成后，同步显示主界面 + 触发入场动效
+      // 开始倒放
+      splash.classList.add('reversing')
+      // 倒放 ~0.7s 后隐藏并显示主界面
       setTimeout(() => {
-        appReady.value = true
-        window.dispatchEvent(new CustomEvent('splash-done'))
+        splash.classList.add('hidden')
+        setTimeout(() => {
+          appReady.value = true
+          window.dispatchEvent(new CustomEvent('splash-done'))
+        }, 300)
       }, 750)
     }, delay)
   } else {
@@ -129,7 +134,7 @@ html, body, #app {
   border-radius: 0 !important;
   border: 2px solid var(--border-color) !important;
   font-weight: 600 !important;
-  transition: all 0.2s !important;
+  transition: all var(--motion-duration-normal) !important;
 }
 
 /* 确认按钮 */
@@ -161,7 +166,7 @@ html, body, #app {
 /* 主界面：splash 结束后与入场动效同步淡入 */
 #app-main {
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity var(--motion-duration-slower) var(--motion-easing-ease);
 }
 #app-main.revealed {
   opacity: 1;

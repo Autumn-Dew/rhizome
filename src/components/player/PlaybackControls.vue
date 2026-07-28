@@ -63,7 +63,7 @@ const onTogglePlay = () => emit('togglePlay')
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: var(--motion-control-hover);
   border-radius: 0;
   flex-shrink: 0;
 }

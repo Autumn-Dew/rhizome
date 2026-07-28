@@ -127,7 +127,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: var(--motion-control-hover);
   border-radius: 0;
   flex-shrink: 0;
 }
@@ -151,7 +151,7 @@ onMounted(() => {
 
 .rc-volume-bar-container:hover .rc-volume-track {
   height: 6px;
-  transition: height 0.2s;
+  transition: height var(--motion-duration-normal);
 }
 
 .rc-volume-bar-container:hover .rc-volume-fill {
@@ -190,7 +190,7 @@ onMounted(() => {
   height: 100%;
   background: var(--progress-fill);
   pointer-events: none;
-  transition: width 0.1s ease;
+  transition: width var(--motion-duration-instant) var(--motion-easing-ease);
 }
 
 .rc-volume-input {

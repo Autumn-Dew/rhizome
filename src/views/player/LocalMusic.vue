@@ -1,30 +1,37 @@
 <template>
   <div class="local-music" :class="[themeClass, { entered: entered }]">
     <div class="local-header">
-      <h2>本地音乐</h2>
-      <p class="desc">扫描并管理本地音频文件</p>
+      <div>
+        <h2>本地音乐</h2>
+        <p class="desc">扫描并管理本地音频文件</p>
+      </div>
+      <span class="view-tabs">
+        <button class="tl-entry-btn" :class="{ active: viewMode === 'folders' }" @click="viewMode = 'folders'">文件夹</button>
+        <button class="tl-entry-btn" :class="{ active: viewMode === 'albums' }" @click="viewMode = 'albums'">专辑</button>
+        <button class="tl-entry-btn" :class="{ active: viewMode === 'artists' }" @click="viewMode = 'artists'">艺人</button>
+      </span>
     </div>
 
     <div class="local-toolbar">
-      <button class="rc-global-btn" @click="handleAddMusic" :disabled="musicStore.loading">
+      <button class="rc-global-btn" @click="handleAddMusic" :disabled="musicStore.loading || viewMode !== 'folders'">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
           <path d="M12 4v16M4 12h16" stroke-width="2" stroke-linecap="round"/>
         </svg>
         <span>添加音乐</span>
       </button>
-      <button class="rc-global-btn" @click="handleAddFolder" :disabled="musicStore.loading">
+      <button class="rc-global-btn" @click="handleAddFolder" :disabled="musicStore.loading || viewMode !== 'folders'">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
           <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" stroke-width="2"/>
         </svg>
         <span>添加文件夹</span>
       </button>
-      <button class="rc-global-btn" @click="toggleMultiMode" :class="{ active: multiMode }">
+      <button class="rc-global-btn" @click="toggleMultiMode" :class="{ active: multiMode }" :disabled="viewMode !== 'folders'">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
         </svg>
         <span>{{ multiMode ? '退出多选' : '多选' }}</span>
       </button>
-      <button class="rc-global-btn" @click="toggleSortMode" :class="{ active: sortMode }">
+      <button class="rc-global-btn" @click="toggleSortMode" :class="{ active: sortMode }" :disabled="viewMode !== 'folders'">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M4 8h16M4 16h16" stroke-linecap="round"/>
           <path d="M8 4l-4 4 4 4M16 20l4-4-4-4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -37,7 +44,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
           <span>加入歌单</span>
         </button>
-        <button class="rc-global-btn" :class="{ 'delete-warning': clickCount > 0 }" :style="pulseStyle" @click="batchDelete" :disabled="!selectedSet.size" :title="confirmHint('__batch__') || '批量删除'">
+        <button class="rc-global-btn" :class="{ 'delete-warning': confirmHint('__batch__') !== '' }" :style="pulseFor('__batch__')" @click="batchDelete" :disabled="!selectedSet.size" :title="confirmHint('__batch__') || '批量删除'">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2M10 11v6M14 11v6M5 6h14v14a2 2 0 012 2H7a2 2 0 01-2-2V6z" stroke-linecap="round"/></svg>
           <span>删除</span>
         </button>
@@ -51,7 +58,7 @@
         <input
             v-model="searchQuery"
             type="text"
-            placeholder="搜索歌曲..."
+            :placeholder="searchPlaceholder"
             class="search-input"
         />
         <button v-if="searchQuery" class="search-clear" @click="searchQuery = ''">×</button>
@@ -64,7 +71,7 @@
     </div>
 
     <!-- 文件夹横向滚动列表 -->
-    <div class="folder-strip" ref="folderStripRef" v-if="!musicStore.loading && musicStore.folders.length">
+    <div class="folder-strip" ref="folderStripRef" v-if="!musicStore.loading && musicStore.folders.length && viewMode === 'folders'">
       <button
           class="folder-chip"
           :class="{ active: activeFolder === null }"
@@ -92,7 +99,25 @@
       </button>
     </div>
 
-    <div class="song-list" v-if="!musicStore.loading">
+    <!-- 专辑视图 -->
+    <div class="view-grid" v-if="viewMode === 'albums'">
+      <div class="view-card" v-for="(a, ai) in albums" :key="a.name" @click="goAlbum(a.name)" :style="staggerStyle(ai)">
+        <div class="view-card-cover"><img v-if="a.coverUrl" :src="a.coverUrl" /><svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke-width="2"/></svg></div>
+        <div class="view-card-name">{{ a.name }}</div>
+        <div class="view-card-badge">{{ a.count }}</div>
+      </div>
+    </div>
+
+    <!-- 艺人视图 -->
+    <div class="view-grid" v-if="viewMode === 'artists'">
+      <div class="view-card" v-for="(a, ai) in artists" :key="a.name" @click="goArtist(a.name)" :style="staggerStyle(ai)">
+        <div class="view-card-cover"><img v-if="a.coverUrl" :src="a.coverUrl" /><svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke-width="2"/></svg></div>
+        <div class="view-card-name">{{ a.name }}</div>
+        <div class="view-card-badge">{{ a.count }}</div>
+      </div>
+    </div>
+
+    <div class="song-list" v-if="!musicStore.loading && viewMode === 'folders'">
       <div
           class="song-item"
           v-for="(item, idx) in filteredSongs"
@@ -148,7 +173,7 @@
               <path d="M5 3l14 9-14 9V3z" stroke-width="2"/>
             </svg>
           </button>
-          <button class="song-btn" :class="{ 'delete-warning': clickCount > 0 }" :style="pulseStyle" @click="deleteSong(item)" :title="confirmHint(item.path) || '删除'">
+          <button class="song-btn" :class="{ 'delete-warning': confirmHint(item.path) !== '' }" :style="pulseFor(item.path)" @click="deleteSong(item)" :title="confirmHint(item.path) || '删除'">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path
                   d="M3 6h18 M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2 M10 11v6 M14 11v6 M5 6h14v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6z"
@@ -174,7 +199,7 @@
     </div>
 
     <!-- 底部浮动按钮组 -->
-    <div class="float-actions" v-if="multiMode || sortMode || playerStore.currentSong">
+    <div class="float-actions" v-if="viewMode === 'folders' && (multiMode || sortMode || playerStore.currentSong)">
       <button v-if="multiMode" class="float-btn" @click="cancelMulti" title="取消多选">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
@@ -200,8 +225,12 @@
   </div>
 </template>
 
+<script>
+export default { name: 'LocalMusic' }
+</script>
 <script setup>
-import { computed, ref, onMounted, toRef } from "vue";
+import { computed, ref, onMounted, toRef, watch, nextTick } from "vue";
+import { useRouter } from 'vue-router'
 import { useGlobalTheme } from "@/composables/useGlobalTheme";
 import { usePageEnter } from "@/composables/usePageEnter";
 import { usePlayerStore } from "@/stores/playerStore";
@@ -215,10 +244,56 @@ import { formatTime } from '@/utils/format'
 import { createSongFromMeta } from '@/utils/song-factory'
 
 const { themeClass } = useGlobalTheme();
+const router = useRouter()
 const playerStore = usePlayerStore();
 const musicStore = useLocalMusicStore();
 const { isCurrentSong } = useCurrentSongHighlight();
-const { confirmDelete, resetConfirm, clickCount, confirmHint, pulseStyle } = useDeleteConfirm()
+const { confirmDelete, resetConfirm, clickCount, confirmHint, pulseFor } = useDeleteConfirm()
+
+const viewMode = ref('folders')
+const activeAlbum = ref(null)
+const activeArtist = ref(null)
+function goAlbum(name) { router.push(`/player/album/album/${encodeURIComponent(name)}`) }
+function goArtist(name) { router.push(`/player/album/artist/${encodeURIComponent(name)}`) }
+
+watch(viewMode, () => { resetEnter(); nextTick(() => { triggerEnter() }) })
+
+const albums = computed(() => {
+  const map = {}
+  for (const s of musicStore.songList) {
+    const key = s.album || '未知专辑'
+    if (!map[key]) map[key] = { name: key, coverUrl: s.coverUrl, count: 0 }
+    map[key].count++
+  }
+  let list = Object.values(map)
+  if (viewMode.value === 'albums' && searchQuery.value.trim()) {
+    const q = searchQuery.value.trim().toLowerCase()
+    list = list.filter(a => a.name.toLowerCase().includes(q))
+  }
+  return list.sort((a, b) => a.name.localeCompare(b.name, 'zh'))
+})
+const artists = computed(() => {
+  const map = {}
+  for (const s of musicStore.songList) {
+    const key = s.singer || '未知歌手'
+    if (!map[key]) map[key] = { name: key, coverUrl: s.coverUrl, count: 0 }
+    map[key].count++
+  }
+  let list = Object.values(map)
+  if (viewMode.value === 'artists' && searchQuery.value.trim()) {
+    const q = searchQuery.value.trim().toLowerCase()
+    list = list.filter(a => a.name.toLowerCase().includes(q))
+  }
+  return list.sort((a, b) => a.name.localeCompare(b.name, 'zh'))
+})
+const albumSongs = computed(() => {
+  if (!activeAlbum.value) return []
+  return musicStore.songList.filter(s => (s.album || '未知专辑') === activeAlbum.value)
+})
+const artistSongs = computed(() => {
+  if (!activeArtist.value) return []
+  return musicStore.songList.filter(s => (s.singer || '未知歌手') === activeArtist.value)
+})
 
 const songListRef = toRef(musicStore, 'songList')
 const {
@@ -251,9 +326,14 @@ function onDrop(idx) {
 }
 
 const activeFolder = ref(null);
-const { entered, staggerStyle, triggerEnter } = usePageEnter();
+const { entered, staggerStyle, triggerEnter, resetEnter } = usePageEnter();
 const folderStripRef = ref(null);
-const searchQuery = ref('');
+const searchQuery = ref('')
+const searchPlaceholder = computed(() => {
+  if (viewMode.value === 'albums') return '搜索专辑...'
+  if (viewMode.value === 'artists') return '搜索艺人...'
+  return '搜索歌曲/艺人/专辑'
+});
 
 const isAllSelected = computed(() => isAllSelectedFn(filteredSongs.value))
 const toggleSelectAll = () => toggleSelectAllFn(filteredSongs.value)
@@ -444,7 +524,7 @@ onMounted(async () => {
 }
 
 .local-header {
-  padding: 16px;
+  padding: 16px; display: flex; justify-content: space-between; align-items: flex-start;
   border-bottom: 2px solid transparent;
 }
 
@@ -524,7 +604,7 @@ onMounted(async () => {
   align-items: center;
   gap: 6px;
   cursor: pointer;
-  transition: all .2s;
+  transition: var(--motion-btn-hover);
   font-size: 13px;
 }
 
@@ -568,7 +648,7 @@ onMounted(async () => {
   cursor: pointer;
   font-size: 12px;
   white-space: nowrap;
-  transition: all .15s;
+  transition: all var(--motion-duration-fast);
   flex-shrink: 0;
 }
 
@@ -623,7 +703,7 @@ onMounted(async () => {
   background: var(--btn-hover-bg);
   transform: scaleX(0);
   transform-origin: center;
-  transition: transform 0.25s ease;
+  transition: transform var(--motion-duration-slow) var(--motion-easing-ease);
 }
 
 .song-item:hover::before {
@@ -760,7 +840,7 @@ onMounted(async () => {
 .playlist-select-popup h4 { margin: 0 0 12px; font-size: 14px; }
 .playlist-option {
   padding: 8px 10px; cursor: pointer; font-size: 13px;
-  transition: background 0.15s;
+  transition: background var(--motion-duration-fast);
 }
 .playlist-option:hover { background: var(--btn-hover-bg); color: var(--btn-hover-text); }
 .empty-hint { font-size: 12px; opacity: 0.5; padding: 20px 0; text-align: center; }
@@ -837,7 +917,7 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: var(--motion-btn-hover);
 }
 .float-btn svg {
   width: 18px;
@@ -866,7 +946,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all .2s;
+  transition: var(--motion-btn-hover);
 }
 
 .song-btn:hover {
@@ -910,21 +990,21 @@ onMounted(async () => {
 /* === 精密组装入场 === */
 .local-header h2 {
   opacity: 0; transform: translateY(-10px); letter-spacing: 3px;
-  transition: opacity 0.18s cubic-bezier(0.2, 0, 0.2, 1),
-              transform 0.18s cubic-bezier(0.2, 0, 0.2, 1),
-              letter-spacing 0.25s cubic-bezier(0.2, 0, 0.2, 1);
+  transition: opacity var(--motion-duration-medium) var(--motion-easing-standard),
+              transform var(--motion-duration-medium) var(--motion-easing-standard),
+              letter-spacing var(--motion-duration-slow) var(--motion-easing-standard);
 }
 .entered .local-header h2 { opacity: 1; transform: translateY(0); letter-spacing: 0; }
 
 .local-header .desc {
   opacity: 0; transform: translateY(-6px);
-  transition: opacity 0.15s ease 0.04s, transform 0.15s ease 0.04s;
+  transition: opacity var(--motion-duration-fast) var(--motion-easing-ease) 0.04s, transform var(--motion-duration-fast) var(--motion-easing-ease) 0.04s;
 }
 .entered .local-header .desc { opacity: 1; transform: translateY(0); }
 
 .local-toolbar .rc-global-btn {
   opacity: 0; transform: scaleX(0);
-  transition: opacity 0.12s ease, transform 0.13s cubic-bezier(0.25, 0, 0, 1);
+  transition: opacity var(--motion-duration-micro) var(--motion-easing-ease), transform var(--motion-duration-btn-transform) var(--motion-easing-enter);
 }
 .local-toolbar .rc-global-btn:nth-child(1) { transition-delay: 0.08s; }
 .local-toolbar .rc-global-btn:nth-child(2) { transition-delay: 0.13s; }
@@ -935,20 +1015,20 @@ onMounted(async () => {
 /* 搜索框入场 */
 .search-box {
   opacity: 0; transform: translateX(8px);
-  transition: opacity 0.15s ease 0.24s, transform 0.15s ease 0.24s;
+  transition: opacity var(--motion-duration-fast) var(--motion-easing-ease) 0.24s, transform var(--motion-duration-fast) var(--motion-easing-ease) 0.24s;
 }
 .entered .search-box { opacity: 1; transform: translateX(0); }
 
 .folder-strip {
   opacity: 0; transform: translateY(-6px);
-  transition: opacity 0.15s ease 0.2s, transform 0.15s ease 0.2s;
+  transition: opacity var(--motion-duration-fast) var(--motion-easing-ease) 0.2s, transform var(--motion-duration-fast) var(--motion-easing-ease) 0.2s;
 }
 .entered .folder-strip { opacity: 1; transform: translateY(0); }
 
 .song-item {
   opacity: 0; transform: translateX(-20px);
-  transition: opacity 0.15s cubic-bezier(0.2, 0, 0.2, 1),
-              transform 0.15s cubic-bezier(0.2, 0, 0.2, 1);
+  transition: opacity var(--motion-duration-fast) var(--motion-easing-standard),
+              transform var(--motion-duration-fast) var(--motion-easing-standard);
 }
 .entered .song-item { opacity: 1; transform: translateX(0); }
 
@@ -957,10 +1037,70 @@ onMounted(async () => {
 .local-header::after, .local-toolbar::after, .folder-strip::after {
   content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 2px;
   background: var(--border-color); transform: scaleX(0);
-  transition: transform 0.25s cubic-bezier(0.25, 0, 0, 1);
+  transition: transform var(--motion-duration-slow) var(--motion-easing-enter);
 }
 .local-toolbar::after, .folder-strip::after { height: 1px; }
 .entered .local-header::after,
 .entered .local-toolbar::after,
 .entered .folder-strip::after { transform: scaleX(1); }
+
+/* header 操作按钮 */
+.header-actions { display: flex; gap: 6px; }
+.tl-entry-btn {
+  display: flex; align-items: center; gap: 6px;
+  height: 32px; padding: 0 12px;
+  border: 2px solid var(--border-color); background: var(--bg-secondary);
+  color: var(--text-primary); font-size: 12px; font-family: monospace;
+  cursor: pointer; transition: var(--motion-btn-hover); flex-shrink: 0;
+}
+.tl-entry-btn:hover { background: var(--btn-hover-bg); color: var(--btn-hover-text); }
+.tl-entry-btn.active { background: var(--btn-hover-bg); color: var(--btn-hover-text); }
+.view-tabs { display: flex; gap: 0; }
+.view-tabs .tl-entry-btn:not(:first-child) { border-left: none; }
+.view-tabs .tl-entry-btn {
+  opacity: 0; transform: scaleX(0);
+  transition: opacity var(--motion-duration-micro) var(--motion-easing-ease), transform var(--motion-duration-btn-transform) var(--motion-easing-enter);
+}
+.view-tabs .tl-entry-btn:nth-child(1) { transition-delay: 0.14s; }
+.view-tabs .tl-entry-btn:nth-child(2) { transition-delay: 0.18s; }
+.view-tabs .tl-entry-btn:nth-child(3) { transition-delay: 0.22s; }
+.entered .view-tabs .tl-entry-btn { opacity: 1; transform: scaleX(1); }
+
+/* 专辑/艺人网格 */
+.view-grid {
+  display: flex; flex-wrap: wrap; gap: 12px; padding: 12px 16px;
+  overflow-y: auto; flex: 1; align-content: flex-start; justify-content: center;
+}
+.view-card {
+  width: 140px; border: 2px solid var(--border-color); cursor: pointer;
+  padding: 12px; text-align: center; position: relative;
+  opacity: 0; transform: translateX(-20px);
+  transition: opacity var(--motion-duration-fast) var(--motion-easing-standard),
+              transform var(--motion-duration-fast) var(--motion-easing-standard);
+}
+.entered .view-card { opacity: 1; transform: translateX(0); }
+.view-card:hover { background: var(--btn-hover-bg); color: var(--btn-hover-text); transition: background var(--motion-duration-fast), color var(--motion-duration-fast) !important; }
+.view-card-cover {
+  width: 100%; height: 100px; overflow: hidden; border: 1px solid var(--border-color);
+  display: flex; align-items: center; justify-content: center; background: var(--bg-secondary);
+  margin-bottom: 8px;
+}
+.view-card-cover img { width: 100%; height: 100%; object-fit: cover; }
+.view-card-cover svg { width: 28px; height: 28px; opacity: 0.3; }
+.view-card-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.view-card-badge {
+  position: absolute; bottom: -1px; right: -1px;
+  width: 22px; height: 22px;
+  background: var(--btn-hover-bg); color: var(--btn-hover-text);
+  font-size: 10px; font-family: monospace; line-height: 22px; text-align: center;
+  border: 2px solid var(--border-color);
+}
+
+.view-back {
+  display: flex; align-items: center; gap: 6px; padding: 10px 16px;
+  font-size: 13px; border-bottom: 2px solid var(--border-color); cursor: pointer;
+  font-family: monospace;
+}
+.view-back svg { width: 16px; height: 16px; }
+.view-back:hover { background: var(--bg-secondary); }
 </style>

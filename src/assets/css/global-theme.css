@@ -13,6 +13,9 @@
     --progress-bg: #e0e0e0;
     --progress-fill: #000000;
     --logo-filter: invert(1);
+    --disabled-bg: #e0e0e0;
+    --disabled-text: #999999;
+    --disabled-border: #cccccc;
 }
 
 .theme-dark {
@@ -28,14 +31,32 @@
     --progress-bg: #4a4a4a;
     --progress-fill: #ffffff;
     --logo-filter: invert(0);
+    --disabled-bg: #3a3a3a;
+    --disabled-text: #666666;
+    --disabled-border: #4a4a4a;
 }
 
 /* ---------- 全局只统一：按钮 hover / active 动效 ---------- */
+.rc-func-btn,
+.rc-sub-func-btn {
+    transition: var(--motion-btn-hover);
+}
 .rc-func-btn:hover,
 .rc-sub-func-btn:hover,
 .rc-func-btn.active,
 .rc-sub-func-btn.active {
     transform: translateY(-1px) scale(1.05);
+}
+
+/* ---------- 全局禁用按钮 ---------- */
+.rc-global-btn:disabled,
+.rc-global-btn[disabled] {
+    background: var(--disabled-bg) !important;
+    color: var(--disabled-text) !important;
+    border-color: var(--disabled-border) !important;
+    cursor: not-allowed !important;
+    opacity: 0.6 !important;
+    pointer-events: none !important;
 }
 
 /* ---------- 全局 Tooltip ---------- */
@@ -57,7 +78,7 @@
     white-space: nowrap;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.15s;
+    transition: opacity var(--motion-duration-fast);
     z-index: 9999;
 }
 .rc-has-tooltip:hover .rc-tooltip {
@@ -92,7 +113,7 @@
     border: 2px solid var(--border-color) !important;
     background: var(--bg-secondary) !important;
     color: var(--text-primary) !important;
-    transition: all 0.2s ease !important;
+    transition: var(--motion-btn-hover) ease !important;
 }
 .rc-custom-modal .el-button:not(.el-button--primary):hover {
     transform: translateY(-1px) scale(1.05) !important;
@@ -106,7 +127,7 @@
     border: 2px solid var(--border-color) !important;
     background: var(--btn-hover-bg) !important;
     color: var(--btn-hover-text) !important;
-    transition: all 0.2s ease !important;
+    transition: var(--motion-btn-hover) ease !important;
 }
 .rc-custom-modal .el-button--primary:hover {
     transform: translateY(-1px) scale(1.05) !important;
@@ -126,24 +147,15 @@
 
 /* ── 拖拽排序 spring 反馈 ── */
 .song-item.sort-bounce {
-  animation: sortBounce 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-@keyframes sortBounce {
-  0% { transform: scale(1); }
-  30% { transform: scale(1.03); }
-  100% { transform: scale(1); }
+  animation: mt-spring-bounce var(--motion-duration-slower) var(--motion-easing-spring);
 }
 
 /* ── 删除脉冲（阶梯加速 + 逐次变深） ── */
 .song-btn.delete-warning,
 .rc-global-btn.delete-warning {
-  animation: pulseWarn calc(var(--pulse-speed, 0.7s)) ease-in-out infinite;
+  animation: mt-pulse-warn calc(var(--pulse-speed, 0.7s)) ease-in-out infinite;
   border-color: var(--pulse-color, #ff6b6b) !important;
   color: var(--pulse-color, #ff6b6b) !important;
-}
-@keyframes pulseWarn {
-  0%, 100% { background: transparent; }
-  50% { background: var(--pulse-bg, rgba(255, 107, 107, 0.12)); }
 }
 
 

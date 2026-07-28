@@ -137,7 +137,10 @@ function loadDiary() {
 }
 function playSong(song) {
   const full = localMusicStore.songList.find(s => s.path === song.path)
-  if (full && full.exists !== false) { playerStore.setPlayList(localMusicStore.songList.filter(s => s.exists !== false)); playerStore.playGlobalSong(full) }
+  if (full && full.exists !== false) {
+    playerStore.setPlayList([full])
+    playerStore.playGlobalSong(full)
+  }
 }
 function onWheel(e) { const b = scrollBox.value; if (b) b.scrollLeft += e.deltaY }
 watch([currentYear, currentMonth], loadDiary)
@@ -157,17 +160,23 @@ onMounted(() => { if (!localMusicStore.loaded) localMusicStore.initFromStorage()
 .diary-header::after {
   content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 2px;
   background: var(--border-color); transform: scaleX(0);
-  transition: transform 0.25s cubic-bezier(0.25, 0, 0, 1);
+  transition: transform var(--motion-duration-slow) var(--motion-easing-enter);
 }
 .entered .diary-header::after { transform: scaleX(1); }
 .header-row { display: flex; justify-content: space-between; align-items: flex-start; }
 .diary-header h2 {
   font-size: 20px; margin: 0 0 4px;
   opacity: 0; transform: translateY(-10px); letter-spacing: 3px;
-  transition: opacity 0.18s cubic-bezier(0.2,0,0.2,1), transform 0.18s, letter-spacing 0.25s;
+  transition: opacity var(--motion-duration-medium) var(--motion-easing-standard), transform var(--motion-duration-medium) var(--motion-easing-standard), letter-spacing var(--motion-duration-slow);
 }
 .entered .diary-header h2 { opacity: 1; transform: translateY(0); letter-spacing: 0; }
-.desc { font-size: 12px; opacity: 0.7; }
+.desc {
+  font-size: 12px;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity var(--motion-duration-fast) var(--motion-easing-ease) 0.04s, transform var(--motion-duration-fast) var(--motion-easing-ease) 0.04s;
+}
+.entered .desc { opacity: 0.7; transform: translateY(0); }
 
 /* toolbar — 统一 */
 .diary-toolbar {
@@ -177,22 +186,49 @@ onMounted(() => { if (!localMusicStore.loaded) localMusicStore.initFromStorage()
 .diary-toolbar::after {
   content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 2px;
   background: var(--border-color); transform: scaleX(0);
-  transition: transform 0.25s cubic-bezier(0.25, 0, 0, 1);
+  transition: transform var(--motion-duration-slow) var(--motion-easing-enter);
 }
 .entered .diary-toolbar::after { transform: scaleX(1); }
-.diary-month-label { font-size: 13px; font-family: monospace; min-width: 100px; text-align: center; }
-.diary-hint { font-size: 11px; opacity: 0.35; font-family: monospace; margin-left: auto; }
+.diary-month-label {
+  font-size: 13px; font-family: monospace; min-width: 100px; text-align: center;
+  opacity: 0; transform: translateY(-4px);
+  transition: opacity var(--motion-duration-fast) var(--motion-easing-ease) 0.10s, transform var(--motion-duration-fast) var(--motion-easing-ease) 0.10s;
+}
+.entered .diary-month-label { opacity: 1; transform: translateY(0); }
+.diary-hint {
+  font-size: 11px; font-family: monospace; margin-left: auto;
+  opacity: 0;
+  transition: opacity var(--motion-duration-fast) var(--motion-easing-ease) 0.18s;
+}
+.entered .diary-hint { opacity: 0.35; }
 
 .tl-entry-btn {
   display: flex; align-items: center; gap: 6px;
   height: 32px; padding: 0 12px;
   border: 2px solid var(--border-color); background: var(--bg-secondary);
   color: var(--text-primary); font-size: 12px; font-family: monospace;
-  cursor: pointer; transition: all 0.2s; flex-shrink: 0;
+  cursor: pointer; transition: var(--motion-btn-hover); flex-shrink: 0;
 }
 .tl-entry-btn:hover:not(:disabled) { background: var(--btn-hover-bg); color: var(--btn-hover-text); }
 .tl-entry-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 .tl-entry-btn svg { width: 15px; height: 15px; fill: none; stroke: currentColor; }
+
+/* header 返回按钮入场 */
+.header-row .tl-entry-btn {
+  opacity: 0; transform: scaleX(0);
+  transition: opacity var(--motion-duration-micro) var(--motion-easing-ease), transform var(--motion-duration-btn-transform) var(--motion-easing-enter);
+  transition-delay: 0.08s;
+}
+.entered .header-row .tl-entry-btn { opacity: 1; transform: scaleX(1); }
+
+/* toolbar 月份按钮入场 */
+.diary-toolbar .tl-entry-btn {
+  opacity: 0; transform: scaleX(0);
+  transition: opacity var(--motion-duration-micro) var(--motion-easing-ease), transform var(--motion-duration-btn-transform) var(--motion-easing-enter);
+}
+.diary-toolbar .tl-entry-btn:nth-child(1) { transition-delay: 0.08s; }
+.diary-toolbar .tl-entry-btn:nth-child(3) { transition-delay: 0.13s; }
+.entered .diary-toolbar .tl-entry-btn { opacity: 1; transform: scaleX(1); }
 
 /* 横向滚动 */
 .diary-scroll { flex: 1; min-height: 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
@@ -207,17 +243,52 @@ onMounted(() => { if (!localMusicStore.loaded) localMusicStore.initFromStorage()
   padding: 28px 24px; display: flex; flex-direction: column;
   justify-content: center;
   opacity: 0; transform: translateY(20px);
-  transition: opacity 0.2s cubic-bezier(0.2,0,0.2,1), transform 0.2s cubic-bezier(0.2,0,0.2,1), border-color 0.2s, background 0.2s;
+  transition: opacity var(--motion-duration-normal) var(--motion-easing-standard), transform var(--motion-duration-normal) var(--motion-easing-standard), border-color var(--motion-duration-normal), background var(--motion-duration-normal);
 }
 .entered .diary-card { opacity: 1; transform: translateY(0); }
 .diary-card:hover { border-color: var(--text-primary); background: var(--bg-secondary); }
-.diary-card-head { margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border-color); }
-.diary-card-date { font-size: 24px; font-weight: 100; letter-spacing: 2px; margin-bottom: 4px; }
-.diary-card-summary { font-size: 12px; opacity: 0.45; font-family: monospace; }
+.diary-card-head {
+  margin-bottom: 24px; padding-bottom: 16px;
+  border-bottom: 1px solid transparent;
+  position: relative;
+}
+.diary-card-head::after {
+  content: ''; position: absolute; bottom: -1px; left: 0; width: 100%; height: 1px;
+  background: var(--border-color); transform: scaleX(0);
+  transition: transform var(--motion-duration-slow) var(--motion-easing-enter);
+}
+.entered .diary-card-head::after { transform: scaleX(1); }
+.diary-card-date {
+  font-size: 24px; font-weight: 100; letter-spacing: 2px; margin-bottom: 4px;
+  opacity: 0; transform: translateX(-8px);
+  transition: opacity var(--motion-duration-fast) var(--motion-easing-standard),
+              transform var(--motion-duration-fast) var(--motion-easing-standard);
+}
+.entered .diary-card-date { opacity: 1; transform: translateX(0); }
+.diary-card-summary {
+  font-size: 12px; font-family: monospace;
+  opacity: 0; transform: translateX(-6px);
+  transition: opacity var(--motion-duration-micro) var(--motion-easing-ease) 0.02s, transform var(--motion-duration-btn-transform) var(--motion-easing-enter) 0.02s;
+}
+.entered .diary-card-summary { opacity: 0.45; transform: translateX(0); }
 
 .diary-card-songs { display: flex; flex-direction: column; gap: 16px; }
-.diary-song { display: flex; gap: 14px; align-items: center; cursor: pointer; padding: 14px; border: 1px solid var(--border-color); transition: background 0.15s; }
-.diary-song:hover { background: var(--bg-secondary); }
+.diary-song {
+  display: flex; gap: 14px; align-items: center; cursor: pointer;
+  padding: 14px; border: 1px solid var(--border-color);
+  position: relative; z-index: 0;
+}
+.diary-song::before {
+  content: ''; position: absolute; inset: 0; z-index: -1;
+  background: var(--btn-hover-bg);
+  transform: scaleX(0); transform-origin: center;
+  transition: transform var(--motion-duration-slow) var(--motion-easing-ease);
+}
+.diary-song:hover::before { transform: scaleX(1); }
+.diary-song:hover { color: var(--btn-hover-text); }
+.diary-song:hover .diary-song-tag,
+.diary-song:hover .diary-song-name,
+.diary-song:hover .diary-song-meta { color: inherit; }
 .diary-song-cover { width: 64px; height: 64px; flex-shrink: 0; overflow: hidden; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; background: var(--bg-secondary); }
 .diary-song-cover img { width: 100%; height: 100%; object-fit: cover; }
 .diary-song-cover svg { width: 22px; height: 22px; opacity: 0.3; }
@@ -226,6 +297,14 @@ onMounted(() => { if (!localMusicStore.loaded) localMusicStore.initFromStorage()
 .diary-song-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .diary-song-meta { font-size: 11px; opacity: 0.5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
 
-.diary-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0.35; gap: 14px; }
+.diary-empty {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 14px;
+  opacity: 0; transform: translateY(12px);
+  transition: opacity var(--motion-duration-normal) var(--motion-easing-standard) 0.2s,
+              transform var(--motion-duration-normal) var(--motion-easing-standard) 0.2s;
+}
+.entered .diary-empty { opacity: 0.35; transform: translateY(0); }
 .diary-empty svg { width: 52px; height: 52px; }
 </style>

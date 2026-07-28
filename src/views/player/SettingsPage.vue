@@ -6,85 +6,9 @@
     </div>
 
     <div class="sp-body">
-      <!-- 左列：常规设置 -->
-      <div class="sp-col">
-      <div class="sp-row">
-        <span class="sp-label">歌词字号</span>
-        <div class="sp-stepper">
-          <button class="sp-btn" @click="changeLyricSize(-1)" :disabled="lyricSize <= 10">−</button>
-          <span class="sp-value">{{ lyricSize }}px</span>
-          <button class="sp-btn" @click="changeLyricSize(1)" :disabled="lyricSize >= 18">+</button>
-        </div>
-      </div>
-
-      <div class="sp-row">
-        <span class="sp-label">歌词对齐</span>
-        <div class="sp-stepper">
-          <button class="sp-btn" :class="{ active: lyricAlign === 'left' }" @click="setLyricAlign('left')">左</button>
-          <button class="sp-btn" :class="{ active: lyricAlign === 'center' }" @click="setLyricAlign('center')">中</button>
-          <button class="sp-btn" :class="{ active: lyricAlign === 'right' }" @click="setLyricAlign('right')">右</button>
-        </div>
-      </div>
-
-      <div class="sp-row">
-        <span class="sp-label">歌词延迟</span>
-        <div class="sp-stepper">
-          <button class="sp-btn" @click="changeLyricOffset(-5)" :disabled="lyricOffset <= -2000">−5</button>
-          <span class="sp-value">{{ lyricOffset }}ms</span>
-          <button class="sp-btn" @click="changeLyricOffset(5)" :disabled="lyricOffset >= 2000">+5</button>
-          <button class="sp-btn" style="width:auto;padding:0 4px;font-size:10px" @click="lyricOffset = 0; saveLyricOffset()">归零</button>
-        </div>
-      </div>
-
-      <div class="sp-row">
-        <span class="sp-label">开机自启</span>
-        <div class="sp-stepper">
-          <button class="sp-btn toggle-btn" :class="{ active: autoLaunch }" @click="toggleAutoLaunch">{{ autoLaunch ? 'ON' : 'OFF' }}</button>
-        </div>
-      </div>
-
-      <div class="sp-row">
-        <span class="sp-label">音频输出设备</span>
-        <select class="sp-select" v-model="audioDeviceId" @change="onDeviceChange">
-          <option value="">系统默认</option>
-          <option v-for="d in audioDevices" :key="d.deviceId" :value="d.deviceId">{{ d.label || d.deviceId }}</option>
-        </select>
-      </div>
-
-      <div class="sp-row">
-        <span class="sp-label">每周自动歌单</span>
-        <div class="sp-stepper">
-          <button class="sp-btn toggle-btn" :class="{ active: weeklyEnabled }" @click="toggleWeekly">{{ weeklyEnabled ? 'ON' : 'OFF' }}</button>
-        </div>
-      </div>
-
-      <div class="sp-row">
-        <span class="sp-label">报告路径</span>
-        <div class="sp-stepper">
-          <button class="sp-btn path-btn" @click="selectReportDir">{{ reportPath || '点击设置路径' }}</button>
-        </div>
-      </div>
-
-      <div class="sp-row">
-        <span class="sp-label">删除确认次数</span>
-        <div class="sp-stepper">
-          <button v-for="n in DELETE_CONFIRM_OPTIONS" :key="n" class="sp-btn toggle-btn" :class="{ active: requiredCount === n }" @click="setRequiredCount(n)">{{ n }}</button>
-        </div>
-      </div>
-
-      <div class="sp-actions">
-        <button class="sp-action-btn" @click="handleBackup">保存数据（备份）</button>
-        <button class="sp-action-btn" @click="handleRestore">加载数据（恢复）</button>
-        <button class="sp-action-btn sp-danger" @click="handleClearAll">清除所有数据</button>
-        <button class="sp-action-btn" @click="showAbout = true">关于 Rhizome</button>
-      </div>
-      </div>
-
-      <!-- 右列：均衡器 -->
-      <!-- 右列 -->
+      <!-- 左侧：报告与操作 -->
       <div class="sp-col">
 
-      <!-- 报告卡片 -->
       <div class="report-card">
         <div class="report-card-header">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M7 8h10M7 12h4M7 16h2"/></svg>
@@ -108,33 +32,114 @@
         </button>
       </div>
 
-      <!-- ═══ 均衡器（暂未启用） ═══
-      <div class="sp-section-title sp-section-first">
-        <span>均衡器</span>
-        <div class="sp-title-actions">
-          <select class="sp-select" v-model="eqPreset" @change="applyPreset" style="width:auto;min-width:80px">
-            <option value="">预设</option>
-            <option v-for="(gains, name) in eqPresets" :key="name" :value="name">{{ name }}</option>
-          </select>
-          <button class="sp-btn" style="width:auto;padding:0 8px;font-size:10px" @click="resetEQ">重置</button>
-        </div>
+      <div class="sp-actions">
+        <button class="sp-action-btn" @click="handleBackup">保存数据（备份）</button>
+        <button class="sp-action-btn" @click="handleRestore">加载数据（恢复）</button>
+        <button class="sp-action-btn sp-danger" @click="handleClearAll">清除所有数据</button>
+        <button class="sp-action-btn" @click="showAbout = true">关于 Rhizome</button>
       </div>
-      <div class="eq-bands">
-        <div class="eq-band" v-for="(b, i) in eqBands" :key="i">
-          <span class="eq-freq">{{ formatFreq(b.freq) }}</span>
-          <div class="eq-slider-wrap">
-            <input type="range" class="eq-slider" min="-12" max="12" :value="b.gain" @input="setBand(i, $event.target.value)" orient="vertical" />
-          </div>
-          <span class="eq-db">{{ b.gain > 0 ? '+' : '' }}{{ b.gain }}dB</span>
-        </div>
       </div>
-      -->
 
-      <div class="sp-section-title" @click="showShortcuts = !showShortcuts" style="cursor:pointer">
-        <span>快捷键 {{ showShortcuts ? '▾' : '▸' }}</span>
-        <button class="sp-btn" style="width:auto;padding:0 8px;font-size:10px" @click.stop="resetSC">重置</button>
+      <!-- 右侧：选项卡 + 内容 -->
+      <div class="sp-col">
+
+      <div class="sp-tabs">
+        <div class="sp-tab" :class="{ active: activeSection === 'system' }" @click="activeSection = 'system'">
+          <span>系统选项</span>
+        </div>
+        <div class="sp-tab" :class="{ active: activeSection === 'shortcuts' }" @click="activeSection = 'shortcuts'">
+          <span>快捷键</span>
+        </div>
+        <div class="sp-tab" :class="{ active: activeSection === 'actions' }" @click="activeSection = 'actions'">
+          <span>动作链</span>
+        </div>
       </div>
-      <template v-if="showShortcuts">
+
+      <div class="sp-panel-wrapper">
+        <Transition name="sp-slide" mode="out-in" appear>
+      <div v-if="activeSection === 'system'" class="sp-panel-card" key="system">
+      <div class="ss-inline-table">
+        <div class="ss-row">
+          <span class="ss-cell-label">音频输出设备</span>
+          <span class="ss-cell-value">
+            <select class="sp-select" v-model="audioDeviceId" @change="onDeviceChange">
+              <option value="">系统默认</option>
+              <option v-for="d in audioDevices" :key="d.deviceId" :value="d.deviceId">{{ d.label || d.deviceId }}</option>
+            </select>
+          </span>
+        </div>
+        <div class="ss-row">
+          <span class="ss-cell-label">歌词对齐</span>
+          <span class="ss-cell-value">
+            <button class="sp-btn" :class="{ active: lyricAlign === 'left' }" @click="setLyricAlign('left')">左</button>
+            <button class="sp-btn" :class="{ active: lyricAlign === 'center' }" @click="setLyricAlign('center')">中</button>
+            <button class="sp-btn" :class="{ active: lyricAlign === 'right' }" @click="setLyricAlign('right')">右</button>
+          </span>
+        </div>
+        <div class="ss-row">
+          <span class="ss-cell-label">歌词字号</span>
+          <span class="ss-cell-value">
+            <button class="sp-btn" @click="changeLyricSize(-1)" :disabled="lyricSize <= 10">−</button>
+            <span class="sp-value">{{ lyricSize }}px</span>
+            <button class="sp-btn" @click="changeLyricSize(1)" :disabled="lyricSize >= 18">+</button>
+          </span>
+        </div>
+        <div class="ss-row">
+          <span class="ss-cell-label">歌词延迟</span>
+          <span class="ss-cell-value">
+            <button class="sp-btn" @mousedown="startLyricOffset(-5)" @mouseup="stopLyricOffset" @mouseleave="stopLyricOffset" :disabled="lyricOffset <= -2000">−5</button>
+            <span class="sp-value">{{ lyricOffset }}ms</span>
+            <button class="sp-btn" @mousedown="startLyricOffset(5)" @mouseup="stopLyricOffset" @mouseleave="stopLyricOffset" :disabled="lyricOffset >= 2000">+5</button>
+          </span>
+        </div>
+        <div class="ss-row">
+          <span class="ss-cell-label">桌面歌词背景</span>
+          <span class="ss-cell-value">
+            <button class="sp-btn" @click="changeLyricBg(-5)" :disabled="lyricBgOpacity <= 0">−5</button>
+            <span class="sp-value">{{ lyricBgOpacity }}%</span>
+            <button class="sp-btn" @click="changeLyricBg(5)" :disabled="lyricBgOpacity >= 100">+5</button>
+          </span>
+        </div>
+        <div class="ss-row">
+          <span class="ss-cell-label">屏保触发时间</span>
+          <span class="ss-cell-value">
+            <button class="sp-btn" @mousedown="startIdleTimeout(-1)" @mouseup="stopIdleTimeout" @mouseleave="stopIdleTimeout" :disabled="idleTimeoutMin <= 1">−1</button>
+            <span class="sp-value">{{ idleTimeoutMin }}min</span>
+            <button class="sp-btn" @mousedown="startIdleTimeout(1)" @mouseup="stopIdleTimeout" @mouseleave="stopIdleTimeout" :disabled="idleTimeoutMin >= 60">+1</button>
+          </span>
+        </div>
+        <div class="ss-row">
+          <span class="ss-cell-label">开机自启</span>
+          <span class="ss-cell-value">
+            <button class="sp-btn toggle-btn" :class="{ active: autoLaunch }" @click="toggleAutoLaunch">{{ autoLaunch ? 'ON' : 'OFF' }}</button>
+          </span>
+        </div>
+        <div class="ss-row">
+          <span class="ss-cell-label">每周自动歌单</span>
+          <span class="ss-cell-value">
+            <button class="sp-btn toggle-btn" :class="{ active: weeklyEnabled }" @click="toggleWeekly">{{ weeklyEnabled ? 'ON' : 'OFF' }}</button>
+          </span>
+        </div>
+        <div class="ss-row">
+          <span class="ss-cell-label">报告路径</span>
+          <span class="ss-cell-value">
+            <button class="sp-btn path-btn" @click="selectReportDir">{{ reportPath || '点击设置路径' }}</button>
+          </span>
+        </div>
+        <div class="ss-row">
+          <span class="ss-cell-label">删除确认次数</span>
+          <span class="ss-cell-value">
+            <button v-for="n in DELETE_CONFIRM_OPTIONS" :key="n" class="sp-btn toggle-btn" :class="{ active: requiredCount === n }" @click="setRequiredCount(n)">{{ n }}</button>
+          </span>
+        </div>
+      </div>
+      </div>
+
+
+          <div v-else-if="activeSection === 'shortcuts'" class="sp-panel-card" key="shortcuts">
+      <div class="sp-panel-bar">
+        <button class="sp-btn" style="width:auto;padding:0 10px;font-size:10px" @click="resetSC">重置</button>
+      </div>
       <div class="ss-inline-table">
         <div class="ss-row ss-row-head">
           <span class="ss-cell-label">操作</span>
@@ -148,14 +153,13 @@
         </div>
       </div>
       <div class="ss-capture" v-if="capturing">捕获按键：{{ captureDisplay || '等待...' }} <button class="sp-btn" style="width:auto;padding:0 8px;font-size:10px" @click="confirmCapture">确认</button></div>
-      </template>
-
-      <!-- ═══ 动作链 ═══ -->
-      <div class="sp-section-title" @click="showActions = !showActions" style="cursor:pointer">
-        <span>动作链 {{ showActions ? '▾' : '▸' }}</span>
-        <button class="sp-btn" style="width:auto;padding:0 8px;font-size:10px" @click.stop="startAddChain" :disabled="acChains.length >= 5">+</button>
       </div>
-      <template v-if="showActions">
+
+
+          <div v-else-if="activeSection === 'actions'" class="sp-panel-card" key="actions">
+      <div class="sp-panel-bar">
+        <button class="sp-btn" style="width:auto;padding:0 10px;font-size:10px" @click="startAddChain" :disabled="acChains.length >= 5">+ 创建</button>
+      </div>
       <div class="ac-list" v-if="acChains.length">
         <div class="ac-item" v-for="(c, ci) in acChains" :key="c.id">
           <span class="ac-key">Alt+{{ ci + 1 }}</span>
@@ -167,7 +171,6 @@
         </div>
       </div>
       <div class="ac-empty" v-else>暂无动作链，点击 + 创建（上限 5 个）</div>
-
       <div class="ac-editor" v-if="editing">
         <div class="ac-edit-row"><span>名称</span><input class="ac-input" v-model="editName" /></div>
         <div class="ac-actions-list">
@@ -192,7 +195,9 @@
           <button class="sp-btn" style="width:auto;padding:0 10px;font-size:11px" @click="editing=null">取消</button>
         </div>
       </div>
-      </template>
+      </div>
+        </Transition>
+      </div>
       </div>
 
       <div class="sp-footer" v-if="msg">{{ msg }}</div>
@@ -216,7 +221,8 @@ import { useActionChain, ACTION_TYPES } from '@/composables/useActionChain'
 import { useDeleteConfirm } from '@/composables/useDeleteConfirm'
 import { useLyricOffset } from '@/composables/useLyricOffset'
 import AboutModal from '@/components/common/AboutModal.vue'
-import { K_LYRIC_SIZE, K_LYRIC_ALIGN, K_REPORT_PATH, K_PLAY_COUNT_REAL } from '@/constants/storage-keys'
+import { K_LYRIC_SIZE, K_LYRIC_ALIGN, K_REPORT_PATH, K_PLAY_COUNT_REAL, K_DESKTOP_LYRICS_BG } from '@/constants/storage-keys'
+import { idleTimeoutSec, setIdleTimeout } from '@/composables/useIdleTimeout'
 
 const { themeClass } = useGlobalTheme()
 const localStore = useLocalMusicStore()
@@ -229,8 +235,7 @@ const { entered, staggerStyle, triggerEnter } = usePageEnter();
 const { requiredCount, setRequiredCount, DELETE_CONFIRM_OPTIONS, confirmHardDelete } = useDeleteConfirm();
 const { offsetMs: lyricOffset } = useLyricOffset();
 const showAbout = ref(false)
-const showShortcuts = ref(false)
-const showActions = ref(false)
+const activeSection = ref('system')
 
 const shortcutDefs = getActionDefs()
 const shortcutConfig = ref(getShortcutConfig())
@@ -280,8 +285,28 @@ const reportStats = computed(() => {
 
 function changeLyricSize(d) { lyricSize.value = Math.max(10, Math.min(18, lyricSize.value + d)); localStorage.setItem(K_LYRIC_SIZE, lyricSize.value) }
 function setLyricAlign(a) { lyricAlign.value = a; localStorage.setItem(K_LYRIC_ALIGN, a) }
-function changeLyricOffset(d) { lyricOffset.value = Math.max(-2000, Math.min(2000, lyricOffset.value + d)) }
-function saveLyricOffset() {} // useLyricOffset 自动持久化，这里空函数给归零按钮用
+let lyricOffsetTimer = null
+function startLyricOffset(d) { lyricOffset.value = Math.max(-2000, Math.min(2000, lyricOffset.value + d)); lyricOffsetTimer = setInterval(() => { lyricOffset.value = Math.max(-2000, Math.min(2000, lyricOffset.value + d)) }, 200) }
+function stopLyricOffset() { clearInterval(lyricOffsetTimer) }
+
+const lyricBgOpacity = ref(Number(localStorage.getItem(K_DESKTOP_LYRICS_BG) || 100))
+function changeLyricBg(d) {
+  lyricBgOpacity.value = Math.max(0, Math.min(100, lyricBgOpacity.value + d))
+  localStorage.setItem(K_DESKTOP_LYRICS_BG, lyricBgOpacity.value)
+  window.dispatchEvent(new CustomEvent('lyric-bg-changed'))
+}
+
+const idleTimeoutMin = ref(Math.max(1, Math.min(60, Math.round(idleTimeoutSec.value / 60))))
+function changeIdleTimeout(d) {
+  idleTimeoutMin.value = Math.max(1, Math.min(60, idleTimeoutMin.value + d))
+  setIdleTimeout(idleTimeoutMin.value)
+}
+let idleTimeoutTimer = null
+function startIdleTimeout(d) {
+  changeIdleTimeout(d)
+  idleTimeoutTimer = setInterval(() => changeIdleTimeout(d), 200)
+}
+function stopIdleTimeout() { clearInterval(idleTimeoutTimer) }
 
 async function toggleAutoLaunch() {
   autoLaunch.value = !autoLaunch.value
@@ -414,29 +439,28 @@ onUnmounted(() => { window.removeEventListener('keydown', onKeydown, true) })
 .settings-page::-webkit-scrollbar { display: none; }
 
 /* ═══ 页头 ═══ */
-.sp-header { padding: 16px; border-bottom: 2px solid transparent; position: relative; }
-.sp-header::after { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 2px; background: var(--border-color); transform: scaleX(0); transition: transform 0.25s cubic-bezier(0.25, 0, 0, 1); }
+.sp-header { padding: 20px 16px 16px; border-bottom: 2px solid transparent; position: relative; }
+.sp-header::after { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 2px; background: var(--border-color); transform: scaleX(0); transition: transform var(--motion-duration-slow) var(--motion-easing-enter); }
 .entered .sp-header::after { transform: scaleX(1); }
 .sp-header h2 { font-size: 20px; margin: 0 0 4px; }
 .sp-desc { font-size: 12px; opacity: 0.7; }
 
 /* ═══ 精密组装入场 ═══ */
-.sp-header h2 { opacity: 0; transform: translateY(-10px); letter-spacing: 3px; transition: opacity 0.18s cubic-bezier(0.2,0,0.2,1), transform 0.18s cubic-bezier(0.2,0,0.2,1), letter-spacing 0.25s cubic-bezier(0.2,0,0.2,1); }
+.sp-header h2 { opacity: 0; transform: translateY(-10px); letter-spacing: 3px; transition: opacity var(--motion-duration-medium) var(--motion-easing-standard), transform var(--motion-duration-medium) var(--motion-easing-standard), letter-spacing var(--motion-duration-slow) var(--motion-easing-standard); }
 .entered .sp-header h2 { opacity: 1; transform: translateY(0); letter-spacing: 0; }
-.sp-desc { opacity: 0; transform: translateY(-6px); transition: opacity 0.15s ease 0.04s, transform 0.15s ease 0.04s; }
+.sp-desc { opacity: 0; transform: translateY(-6px); transition: opacity var(--motion-duration-fast) var(--motion-easing-ease) 0.04s, transform var(--motion-duration-fast) var(--motion-easing-ease) 0.04s; }
 .entered .sp-desc { opacity: 0.7; transform: translateY(0); }
 
-.sp-body { padding: 0 16px 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 0 48px; align-items: start; width: 100%; max-width: 860px; margin: 0 auto; }
-.sp-col { min-width: 0; overflow: hidden; }
-.sp-footer { grid-column: 1 / -1; padding: 10px 0; font-size: 12px; text-align: center; opacity: 0; transition: opacity 0.15s ease; }
+.sp-body { padding: 8px 16px 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; align-items: start; width: 100%; }
+.sp-col { min-width: 0; }
+.sp-footer { grid-column: 1 / -1; padding: 10px 0; font-size: 12px; text-align: center; opacity: 0; transition: opacity var(--motion-duration-fast) var(--motion-easing-ease); }
 .entered .sp-footer { opacity: 0.6; }
 
-/* ═══ 设置行 ═══ */
-.sp-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border-color); opacity: 0; transform: translateX(-20px); transition: opacity 0.15s cubic-bezier(0.2,0,0.2,1), transform 0.15s cubic-bezier(0.2,0,0.2,1); }
-.entered .sp-row { opacity: 1; transform: translateX(0); }
+/* ═══ 设置行（保留兼容） ═══ */
+.sp-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border-color); }
 .sp-label { font-size: 12px; font-family: monospace; }
 .sp-stepper { display: flex; align-items: center; gap: 6px; }
-.sp-btn { width: 28px; height: 28px; border: 2px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+.sp-btn { width: 36px; height: 28px; border: 2px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: all var(--motion-duration-normal); }
 .sp-btn:hover:not(:disabled) { background: var(--btn-hover-bg); color: var(--btn-hover-text); }
 .sp-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 .sp-btn.active { background: var(--btn-hover-bg); color: var(--btn-hover-text); }
@@ -446,18 +470,66 @@ onUnmounted(() => { window.removeEventListener('keydown', onKeydown, true) })
 .sp-select { height: 28px; padding: 0 8px; border: 2px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 11px; font-family: monospace; cursor: pointer; outline: none; max-width: 180px; }
 .sp-select option { background: var(--bg-primary); color: var(--text-primary); }
 
-/* ═══ 分区标题 ═══ */
-.sp-section-title { font-size: 14px; font-weight: 600; margin: 20px 0 10px; padding-top: 12px; border-top: 2px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; opacity: 0; transform: translateX(-12px); transition: opacity 0.15s cubic-bezier(0.2,0,0.2,1), transform 0.15s cubic-bezier(0.2,0,0.2,1); }
-.entered .sp-section-title { opacity: 1; transform: translateX(0); }
-.sp-title-actions { display: flex; align-items: center; gap: 6px; }
+/* ═══ 列布局 ═══ */
+.sp-body { gap: 24px; }
+.sp-col { padding-top: 8px; }
+
+/* ═══ 水平选项卡 ═══ */
+.sp-tabs {
+  display: flex; gap: 0;
+  border: 2px solid var(--border-color);
+  border-bottom: 2px solid var(--border-color); margin-bottom: 0;
+}
+.sp-tab {
+  flex: 1; height: 34px; padding: 0 16px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-family: monospace;
+  cursor: pointer; user-select: none;
+  border-right: 1px solid var(--border-color);
+  opacity: 0; transform: scaleX(0);
+  transition: opacity var(--motion-duration-micro) var(--motion-easing-ease), transform var(--motion-duration-btn-transform) var(--motion-easing-enter), background var(--motion-duration-normal), color var(--motion-duration-normal);
+}
+.entered .sp-tab { opacity: 1; transform: scaleX(1); }
+.sp-tab:nth-child(1) { transition-delay: 0.24s; }
+.sp-tab:nth-child(2) { transition-delay: 0.27s; }
+.sp-tab:nth-child(3) { transition-delay: 0.30s; }
+.sp-tab:last-child { border-right: none; }
+.sp-tab:hover { background: var(--bg-secondary); }
+.sp-tab.active { background: var(--btn-hover-bg); color: var(--btn-hover-text); transition-delay: 0s !important; }
+
+/* ═══ 面板卡片 ═══ */
+.sp-panel-card {
+  border: 2px solid var(--border-color);
+  border-top: 2px solid var(--border-color); margin-top: -2px;
+}
+/* 面板切换动效 — 淡入 + 微上移，边框保持原位 */
+.sp-panel-wrapper { position: relative; }
+.sp-slide-enter-active { transition: opacity var(--motion-duration-fast) var(--motion-easing-standard) 0.16s, transform var(--motion-duration-fast) var(--motion-easing-enter) 0.16s; }
+.sp-slide-leave-active { transition: opacity var(--motion-duration-micro) var(--motion-easing-ease), transform 0.12s var(--motion-easing-leave); position: absolute; top: 0; left: 0; width: 100%; }
+.sp-slide-enter-from { opacity: 0; transform: translateY(6px); }
+.sp-slide-leave-to   { opacity: 0; transform: translateY(-4px); }
+
+.sp-panel-card .ss-inline-table,
+.sp-panel-card .ac-list { padding: 8px 12px; }
+.sp-panel-card .ac-empty { padding: 20px 12px; text-align: center; font-size: 11px; font-family: monospace; opacity: 0.4; }
+.sp-panel-card .ac-editor { margin: 8px 12px 12px; }
+.sp-panel-card .ss-capture { margin: 6px 12px 10px; }
+.sp-panel-bar {
+  display: flex; justify-content: flex-end; gap: 4px;
+  padding: 6px 12px; border-bottom: 1px solid var(--border-color);
+  height: 34px; align-items: center;
+}
+/* 统一面板行高 */
+.sp-panel-card .ss-row { height: 40px; }
+.sp-panel-card .ac-item { height: 36px; }
+.sp-panel-card .ss-row-head { height: 28px; }
 
 /* ═══ 报告卡片 ═══ */
 .report-card {
-  margin: 16px 0 8px; padding: 16px;
+  margin: 0 0 20px; padding: 16px;
   border: 2px solid var(--border-color);
   opacity: 0; transform: translateX(-20px);
-  transition: opacity 0.15s cubic-bezier(0.2,0,0.2,1), transform 0.15s cubic-bezier(0.2,0,0.2,1);
-  transition-delay: 0.38s;
+  transition: opacity var(--motion-duration-fast) var(--motion-easing-standard), transform var(--motion-duration-fast) var(--motion-easing-standard);
 }
 .entered .report-card { opacity: 1; transform: translateX(0); }
 .report-card-header {
@@ -473,7 +545,7 @@ onUnmounted(() => { window.removeEventListener('keydown', onKeydown, true) })
   background: var(--bg-secondary); color: var(--text-primary);
   cursor: pointer; font-size: 11px; font-family: monospace;
   display: flex; align-items: center; gap: 6px; padding: 0 10px;
-  transition: all 0.2s;
+  transition: all var(--motion-duration-normal);
 }
 .report-type-btn:hover { background: var(--btn-hover-bg); color: var(--btn-hover-text); }
 .report-type-btn.active { background: var(--btn-hover-bg); color: var(--btn-hover-text); }
@@ -490,46 +562,45 @@ onUnmounted(() => { window.removeEventListener('keydown', onKeydown, true) })
   background: var(--btn-hover-bg); color: var(--btn-hover-text);
   font-size: 13px; font-family: monospace; cursor: pointer;
   display: flex; align-items: center; justify-content: center; gap: 8px;
-  transition: all 0.2s;
+  transition: all var(--motion-duration-normal);
 }
 .report-generate-btn:hover { opacity: 0.85; }
 .report-generate-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 .report-generate-btn svg { width: 16px; height: 16px; }
 
 /* ═══ 操作按钮 ═══ */
-.sp-actions { display: flex; flex-direction: column; gap: 6px; padding-top: 20px; }
-.sp-action-btn { width: 100%; height: 34px; border: 2px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 12px; font-family: monospace; cursor: pointer; text-align: left; padding: 0 14px; opacity: 0; transform: scaleX(0); transition: opacity 0.12s ease, transform 0.13s cubic-bezier(0.25,0,0,1); }
+.sp-actions { display: flex; flex-direction: column; gap: 6px; }
+.sp-action-btn { width: 100%; height: 34px; border: 2px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 12px; font-family: monospace; cursor: pointer; text-align: left; padding: 0 14px; opacity: 0; transform: scaleX(0); transition: opacity var(--motion-duration-micro) var(--motion-easing-ease), transform var(--motion-duration-btn-transform) var(--motion-easing-enter); }
 .entered .sp-action-btn { opacity: 1; transform: scaleX(1); }
-.sp-action-btn:hover { background: var(--btn-hover-bg); color: var(--btn-hover-text); transition: background 0.2s, color 0.2s; }
+.sp-action-btn:hover { background: var(--btn-hover-bg); color: var(--btn-hover-text); transition: background var(--motion-duration-normal), color var(--motion-duration-normal); }
 .sp-danger:hover { background: #f44336; color: #fff; border-color: #f44336; }
 
 /* ═══ 快捷键表格 ═══ */
 .ss-inline-table { padding: 4px 0; }
-.ss-inline-table .ss-row { display: flex; align-items: center; border-bottom: 1px solid var(--border-color); opacity: 0; transform: translateX(-20px); transition: opacity 0.15s cubic-bezier(0.2,0,0.2,1), transform 0.15s cubic-bezier(0.2,0,0.2,1); }
-.entered .ss-inline-table .ss-row { opacity: 1; transform: translateX(0); }
+.ss-inline-table .ss-row { display: flex; align-items: center; border-bottom: 1px solid var(--border-color); }
+.ss-inline-table .ss-row:last-child { border-bottom: none; }
 .ss-row-head { font-size: 10px; opacity: 0.5; padding: 3px 0; }
 .ss-row-disabled { opacity: 0.4; }
-.ss-cell-label { flex: 1; font-size: 11px; font-family: monospace; padding: 5px 4px; }
-.ss-cell-key { width: 64px; text-align: center; font-family: monospace; font-size: 10px; cursor: pointer; padding: 5px 2px; border: 2px solid transparent; transition: background 0.15s; }
+.ss-cell-label { flex: 1; font-size: 11px; font-family: monospace; padding: 5px 4px; min-width: 0; }
+.ss-cell-key { min-width: 100px; text-align: center; font-family: monospace; font-size: 10px; cursor: pointer; padding: 5px 4px; border: 2px solid transparent; transition: background 0.15s; white-space: nowrap; }
 .ss-cell-key:hover { background: var(--bg-secondary); }
 .ss-cell-sel { background: var(--btn-hover-bg); color: var(--btn-hover-text); }
 .ss-cell-na { opacity: 0.3; cursor: default; }
 .ss-cell-na:hover { background: transparent; }
-.ss-capture { margin-top: 6px; padding: 5px 8px; border: 2px solid var(--btn-hover-bg); background: var(--bg-secondary); font-size: 11px; font-family: monospace; display: flex; align-items: center; gap: 8px; opacity: 0; transform: translateX(-12px); transition: opacity 0.15s cubic-bezier(0.2,0,0.2,1), transform 0.15s cubic-bezier(0.2,0,0.2,1); }
+.ss-cell-value { flex: 1; display: flex; align-items: center; justify-content: flex-end; gap: 4px; padding: 5px 0; }
+.ss-cell-value .sp-select { max-width: 180px; }
+.ss-cell-value .path-btn { width: auto; padding: 0 8px; font-size: 11px; min-width: 100px; }
+.ss-capture { margin-top: 6px; padding: 5px 8px; border: 2px solid var(--btn-hover-bg); background: var(--bg-secondary); font-size: 11px; font-family: monospace; display: flex; align-items: center; gap: 8px; opacity: 0; transform: translateX(-12px); transition: opacity var(--motion-duration-fast) var(--motion-easing-standard), transform var(--motion-duration-fast) var(--motion-easing-standard); }
 .entered .ss-capture { opacity: 1; transform: translateX(0); }
 
 /* ═══ 动作链 ═══ */
 .ac-list { padding: 4px 0; }
-.ac-item { display: flex; align-items: center; gap: 6px; padding: 5px 0; border-bottom: 1px solid var(--border-color); font-size: 11px; opacity: 0; transform: translateX(-20px); transition: opacity 0.15s cubic-bezier(0.2,0,0.2,1), transform 0.15s cubic-bezier(0.2,0,0.2,1); }
-.entered .ac-item { opacity: 1; transform: translateX(0); }
-.ac-item:nth-child(1) { transition-delay: 0.40s; }
-.ac-item:nth-child(2) { transition-delay: 0.42s; }
-.ac-item:nth-child(3) { transition-delay: 0.44s; }
+.ac-item { display: flex; align-items: center; gap: 6px; padding: 5px 0; border-bottom: 1px solid var(--border-color); font-size: 11px; }
+.ac-item:last-child { border-bottom: none; }
 .ac-name { flex: 1; font-family: monospace; }
 .ac-key { font-size: 10px; font-family: monospace; opacity: 0.5; min-width: 40px; }
 .ac-count { font-size: 10px; opacity: 0.5; font-family: monospace; }
-.ac-empty { font-size: 11px; opacity: 0.4; padding: 8px 0; font-family: monospace; opacity: 0; transition: opacity 0.15s ease 0.40s; }
-.entered .ac-empty { opacity: 0.4; }
+.ac-empty { font-size: 11px; font-family: monospace; padding: 8px 0; }
 
 .ac-editor { margin-top: 8px; padding: 8px; border: 2px solid var(--border-color); background: var(--bg-secondary); }
 .ac-edit-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 11px; font-family: monospace; }
@@ -540,21 +611,9 @@ onUnmounted(() => { window.removeEventListener('keydown', onKeydown, true) })
 .ac-edit-btns { display: flex; gap: 6px; margin-top: 8px; }
 
 /* ═══ 精确延迟 ═══ */
-.sp-col:first-child .sp-row:nth-child(1) { transition-delay: 0.24s; }
-.sp-col:first-child .sp-row:nth-child(2) { transition-delay: 0.263s; }
-.sp-col:first-child .sp-row:nth-child(3) { transition-delay: 0.286s; }
-.sp-col:first-child .sp-row:nth-child(4) { transition-delay: 0.309s; }
-.sp-col:first-child .sp-row:nth-child(5) { transition-delay: 0.332s; }
-.sp-col:first-child .sp-row:nth-child(6) { transition-delay: 0.355s; }
-.sp-section-title { transition-delay: 0.26s; }
-.ss-inline-table .ss-row:nth-child(1) { transition-delay: 0.30s; }
-.ss-inline-table .ss-row:nth-child(2) { transition-delay: 0.32s; }
-.ss-inline-table .ss-row:nth-child(3) { transition-delay: 0.34s; }
-.ss-inline-table .ss-row:nth-child(4) { transition-delay: 0.36s; }
-.ss-inline-table .ss-row:nth-child(5) { transition-delay: 0.38s; }
-.ss-inline-table .ss-row:nth-child(6) { transition-delay: 0.40s; }
-.ss-inline-table .ss-row:nth-child(7) { transition-delay: 0.42s; }
-.ss-inline-table .ss-row:nth-child(8) { transition-delay: 0.44s; }
-.ss-inline-table .ss-row:nth-child(9) { transition-delay: 0.46s; }
-.sp-footer { transition-delay: 0.55s; }
+.report-card { transition-delay: 0.22s; }
+.sp-action-btn:nth-child(1) { transition-delay: 0.30s; }
+.sp-action-btn:nth-child(2) { transition-delay: 0.33s; }
+.sp-action-btn:nth-child(3) { transition-delay: 0.36s; }
+.sp-action-btn:nth-child(4) { transition-delay: 0.39s; }
 </style>

@@ -57,7 +57,7 @@
       </button>
       <template v-if="multiMode">
         <button class="rc-global-btn" @click="toggleSelectAll"><span>{{ isAllSelected ? '全不选' : '全选' }}</span></button>
-        <button class="rc-global-btn" :class="{ 'delete-warning': clickCount > 0 }" :style="pulseStyle" @click="batchRemove" :disabled="!selectedSet.size" :title="confirmHint('__batch__') || '批量移除'">
+        <button class="rc-global-btn" :class="{ 'delete-warning': confirmHint('__batch__') !== '' }" :style="pulseFor('__batch__')" @click="batchRemove" :disabled="!selectedSet.size" :title="confirmHint('__batch__') || '批量移除'">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke-width="2"/></svg>
           <span>移除</span>
         </button>
@@ -119,10 +119,13 @@
               <path d="M5 3l14 9-14 9V3z" stroke-width="2"/>
             </svg>
           </button>
-          <button class="song-btn" :class="{ 'delete-warning': clickCount > 0 }" :style="pulseStyle" @click="removeFromPlaylist(item)" :disabled="!item.exists" :title="confirmHint(item.path) || '从歌单移除'">
+          <button class="song-btn" :class="{ 'delete-warning': confirmHint(item.path) !== '' }" :style="pulseFor(item.path)" @click="removeFromPlaylist(item)" :disabled="!item.exists" :title="confirmHint(item.path) || '从歌单移除'">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke-width="2"/>
             </svg>
+          </button>
+          <button class="song-btn" @click.stop="openPlaylistSelect(item)" title="加入歌单">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14M5 12h14" stroke-width="2"/></svg>
           </button>
           <FavoriteButton :song="item" />
         </div>
@@ -184,6 +187,14 @@
         </div>
       </div>
     </div>
+
+    <div class="modal-mask" v-if="showPlaylistSelectPd" @click.self="showPlaylistSelectPd = false">
+      <div class="modal-content" :class="[themeClass]">
+        <div class="modal-header"><h3>加入歌单</h3><button class="close-btn" @click="showPlaylistSelectPd = false">×</button></div>
+        <div class="modal-body"><div class="song-select-list"><div class="song-select-item" v-for="pl in playlistListAll" :key="pl.localId" @click="confirmAddToPlaylistPd(pl)">{{ pl.title }}</div></div></div>
+        <div class="modal-footer"><button class="btn-cancel" @click="showPlaylistSelectPd = false">取消</button></div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -210,7 +221,7 @@ const { themeClass } = useGlobalTheme()
 const playerStore = usePlayerStore()
 const localMusicStore = useLocalMusicStore()
 const { isCurrentSong } = useCurrentSongHighlight()
-const { confirmDelete, resetConfirm, clickCount, confirmHint, pulseStyle } = useDeleteConfirm()
+const { confirmDelete, resetConfirm, clickCount, confirmHint, pulseFor } = useDeleteConfirm()
 
 const playlistInfo = ref({})
 const realSongList = ref([])
@@ -319,6 +330,19 @@ const openAddSongModal = () => {
 }
 const closeAddSongModal = () => showAddSongModal.value = false
 
+const showPlaylistSelectPd = ref(false)
+const pendingPathPd = ref('')
+const playlistListAll = computed(() => JSON.parse(localStorage.getItem(K_LOCAL_PLAYLISTS) || '[]'))
+function openPlaylistSelect(item) { pendingPathPd.value = item.path; showPlaylistSelectPd.value = true }
+function confirmAddToPlaylistPd(pl) {
+  const map = JSON.parse(localStorage.getItem(K_PLAYLIST_SONGS) || '{}')
+  const existing = new Set(map[pl.localId] || [])
+  existing.add(pendingPathPd.value)
+  map[pl.localId] = [...existing]
+  localStorage.setItem(K_PLAYLIST_SONGS, JSON.stringify(map))
+  showPlaylistSelectPd.value = false
+}
+
 const toggleSelectSong = (song) => {
   selectedPathSet.value.has(song.path) ? selectedPathSet.value.delete(song.path) : selectedPathSet.value.add(song.path)
 }
@@ -369,7 +393,7 @@ onMounted(async () => { if (!localMusicStore.loaded && !localMusicStore.loading)
 .playlist-detail { width: 100%; height: 100%; background: var(--bg-primary); color: var(--text-primary); overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none; }
 .playlist-detail::-webkit-scrollbar { display: none; }
 .detail-header { display: flex; justify-content: space-between; align-items: flex-start; padding: 16px; border-bottom: 2px solid transparent; position: relative; }
-.detail-header::after { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 2px; background: var(--border-color); transform: scaleX(0); transition: transform 0.25s cubic-bezier(0.25, 0, 0, 1); }
+.detail-header::after { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 2px; background: var(--border-color); transform: scaleX(0); transition: transform var(--motion-duration-slow) var(--motion-easing-enter); }
 .entered .detail-header::after { transform: scaleX(1); }
 .detail-header-info { display: flex; gap: 20px; flex: 1; }
 .playlist-cover { width: 100px; height: 100px; border: 2px solid var(--border-color); display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--bg-secondary); }
@@ -381,13 +405,13 @@ onMounted(async () => { if (!localMusicStore.loaded && !localMusicStore.loading)
 .playlist-stats { display: flex; gap: 16px; margin-top: 8px; }
 .stat-item { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; opacity: .75; }
 .stat-item svg { width: 14px; height: 14px; }
-.back-btn { height: 36px; padding: 0 14px; border: 2px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); display: flex; align-items: center; gap: 6px; cursor: pointer; transition: all .2s; flex-shrink: 0; }
+.back-btn { height: 36px; padding: 0 14px; border: 2px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); display: flex; align-items: center; gap: 6px; cursor: pointer; transition: var(--motion-btn-hover); flex-shrink: 0; }
 .back-btn svg { width: 14px; height: 14px; }
 .back-btn:hover { background: var(--btn-hover-bg); color: var(--btn-hover-text); transform: translateY(-1px); }
-.detail-toolbar { display: flex; gap: 8px; padding: 12px; border-bottom: 2px solid transparent; }
-.detail-toolbar::after { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 2px; background: var(--border-color); transform: scaleX(0); transition: transform 0.25s cubic-bezier(0.25, 0, 0, 1); }
+.detail-toolbar { display: flex; gap: 8px; padding: 12px; border-bottom: 2px solid transparent; position: relative; }
+.detail-toolbar::after { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 2px; background: var(--border-color); transform: scaleX(0); transition: transform var(--motion-duration-slow) var(--motion-easing-enter); }
 .entered .detail-toolbar::after { transform: scaleX(1); }
-.rc-global-btn { height: 36px; padding: 0 14px; border: 2px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); display: flex; align-items: center; gap: 6px; cursor: pointer; transition: all .2s; }
+.rc-global-btn { height: 36px; padding: 0 14px; border: 2px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); display: flex; align-items: center; gap: 6px; cursor: pointer; transition: var(--motion-btn-hover); }
 .rc-global-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; }
 .rc-global-btn:hover { background: var(--btn-hover-bg); color: var(--btn-hover-text); transform: translateY(-1px); }
 .play-all-btn { background: var(--border-color); color: var(--bg-primary); }
@@ -402,7 +426,7 @@ onMounted(async () => { if (!localMusicStore.loaded && !localMusicStore.loading)
   content: ''; position: absolute; inset: 0; z-index: -1;
   background: var(--btn-hover-bg);
   transform: scaleX(0); transform-origin: center;
-  transition: transform 0.25s ease;
+  transition: transform var(--motion-duration-slow) var(--motion-easing-ease);
 }
 .song-item:hover::before { transform: scaleX(1); }
 .song-item:hover { color: var(--btn-hover-text); }
@@ -460,7 +484,7 @@ onMounted(async () => { if (!localMusicStore.loaded && !localMusicStore.loading)
 .song-artist { font-size: 12px; opacity: .65; }
 .song-duration { width: 60px; text-align: right; font-size: 12px; opacity: .75; }
 .song-actions { display: flex; gap: 4px; margin-left: 8px; }
-.song-btn { width: 30px; height: 30px; border: 2px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all .2s; }
+.song-btn { width: 30px; height: 30px; border: 2px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: var(--motion-btn-hover); }
 .song-btn:hover { background: var(--btn-hover-bg); color: var(--btn-hover-text); border-color: var(--btn-hover-text); }
 .song-btn svg { width: 14px; height: 14px; fill: none; stroke: currentColor; }
 .song-btn:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -477,18 +501,18 @@ onMounted(async () => { if (!localMusicStore.loaded && !localMusicStore.loading)
 .form-group { margin-bottom: 16px; }
 .form-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
 .modal-footer { display: flex; justify-content: flex-end; gap: 12px; padding: 16px; border-top: 2px solid var(--border-color); }
-.btn-cancel, .btn-confirm { padding: 6px 16px; border: 2px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); cursor: pointer; font-size: 13px; transition: all .2s; }
+.btn-cancel, .btn-confirm { padding: 6px 16px; border: 2px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); cursor: pointer; font-size: 13px; transition: var(--motion-btn-hover); }
 .btn-cancel:hover, .btn-confirm:hover { background: var(--btn-hover-bg); color: var(--btn-hover-text); }
 .btn-confirm { background: var(--border-color); color: var(--bg-primary); }
 .song-select-list { max-height: 300px; overflow-y: auto; border: 2px solid var(--border-color); scrollbar-width: none; }
 .song-select-list::-webkit-scrollbar { display: none; }
-.song-select-item { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background .2s; }
+.song-select-item { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background var(--motion-duration-normal); }
 .song-select-item:hover { background: var(--bg-secondary); }
 .song-select-item.active { background: var(--btn-hover-bg); color: var(--btn-hover-text); }
 .select-indicator { width: 16px; height: 16px; border: 2px solid var(--border-color); display: inline-block; flex-shrink: 0; }
 .song-select-item.active .select-indicator { background: currentColor; }
 .empty-select { padding: 40px; text-align: center; opacity: .5; font-size: 13px; }
-.folder-add-btn { width: 100%; height: 36px; border: 2px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); cursor: pointer; font-size: 13px; transition: all .2s; margin-top: 4px; }
+.folder-add-btn { width: 100%; height: 36px; border: 2px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); cursor: pointer; font-size: 13px; transition: var(--motion-btn-hover); margin-top: 4px; }
 .folder-add-btn:hover { background: var(--btn-hover-bg); color: var(--btn-hover-text); }
 
 /* 底部浮动按钮组 */
@@ -513,7 +537,7 @@ onMounted(async () => { if (!localMusicStore.loaded && !localMusicStore.loading)
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: var(--motion-btn-hover);
 }
 .float-btn svg {
   width: 18px;
@@ -529,44 +553,44 @@ onMounted(async () => { if (!localMusicStore.loaded && !localMusicStore.loading)
 /* === 精密组装入场 === */
 .playlist-cover {
   opacity: 0; transform: translateX(-40px);
-  transition: opacity 0.18s cubic-bezier(0.2, 0, 0.2, 1),
-              transform 0.18s cubic-bezier(0.2, 0, 0.2, 1);
+  transition: opacity var(--motion-duration-medium) var(--motion-easing-standard),
+              transform var(--motion-duration-medium) var(--motion-easing-standard);
 }
 .entered .playlist-cover { opacity: 1; transform: translateX(0); }
 
 .playlist-text h2 {
   opacity: 0; transform: translateY(-10px); letter-spacing: 3px;
-  transition: opacity 0.18s cubic-bezier(0.2, 0, 0.2, 1) 0.06s,
-              transform 0.18s cubic-bezier(0.2, 0, 0.2, 1) 0.06s,
-              letter-spacing 0.25s cubic-bezier(0.2, 0, 0.2, 1) 0.06s;
+  transition: opacity var(--motion-duration-medium) var(--motion-easing-standard) 0.06s,
+              transform var(--motion-duration-medium) var(--motion-easing-standard) 0.06s,
+              letter-spacing var(--motion-duration-slow) var(--motion-easing-standard) 0.06s;
 }
 .entered .playlist-text h2 { opacity: 1; transform: translateY(0); letter-spacing: 0; }
 
 .playlist-text .desc,
 .playlist-text .playlist-stats {
   opacity: 0; transform: translateY(-6px);
-  transition: opacity 0.15s ease 0.1s, transform 0.15s ease 0.1s;
+  transition: opacity var(--motion-duration-fast) var(--motion-easing-ease) 0.04s, transform var(--motion-duration-fast) var(--motion-easing-ease) 0.04s;
 }
 .entered .playlist-text .desc,
 .entered .playlist-text .playlist-stats { opacity: 1; transform: translateY(0); }
 
 .back-btn {
   opacity: 0; transform: scaleX(0);
-  transition: opacity 0.12s ease, transform 0.13s cubic-bezier(0.25, 0, 0, 1);
+  transition: opacity var(--motion-duration-micro) var(--motion-easing-ease), transform var(--motion-duration-btn-transform) var(--motion-easing-enter);
   transition-delay: 0.12s;
 }
 .entered .back-btn { opacity: 1; transform: scaleX(1); }
 
 .detail-toolbar .rc-global-btn {
   opacity: 0; transform: scaleX(0);
-  transition: opacity 0.12s ease, transform 0.13s cubic-bezier(0.25, 0, 0, 1);
+  transition: opacity var(--motion-duration-micro) var(--motion-easing-ease), transform var(--motion-duration-btn-transform) var(--motion-easing-enter);
 }
 .entered .detail-toolbar .rc-global-btn { opacity: 1; transform: scaleX(1); }
 
 .song-item {
   opacity: 0; transform: translateX(-20px);
-  transition: opacity 0.15s cubic-bezier(0.2, 0, 0.2, 1),
-              transform 0.15s cubic-bezier(0.2, 0, 0.2, 1);
+  transition: opacity var(--motion-duration-fast) var(--motion-easing-standard),
+              transform var(--motion-duration-fast) var(--motion-easing-standard);
 }
 .entered .song-item { opacity: 1; transform: translateX(0); }
 </style>

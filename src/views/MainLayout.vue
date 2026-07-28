@@ -1,4 +1,5 @@
 <template>
+  <SplashOverlay :visible="showScreensaver" :theme-class="themeClass" @dismiss="dismissScreensaver" />
   <div class="rc-main-container" :class="[themeClass]">
     <div class="rc-title-bar">
       <h2>Rhizome · 音乐播放器</h2>
@@ -37,7 +38,6 @@
           @toggle-desktop-lyrics="onToggleDesktopLyrics"
           @toggle-lyric-lock="onToggleLyricLock"
           @setABPoint="onSetABPoint"
-          @toggle-ab-loop="onToggleABLoop"
       />
     </div>
 
@@ -68,10 +68,13 @@ import {useShortcuts} from '@/composables/useShortcuts'
 import {useActionChain} from '@/composables/useActionChain'
 import {useLyricOffset} from '@/composables/useLyricOffset'
 import { resolveLyrics } from '@/utils/lyrics'
-import { K_VOLUME, K_LYRIC_SIZE, K_LYRIC_ALIGN, K_DESKTOP_LYRICS_VIS, K_DESKTOP_LYRICS_LCK, K_PLAYER_STATE } from '@/constants/storage-keys'
+import { K_VOLUME, K_LYRIC_SIZE, K_LYRIC_ALIGN, K_DESKTOP_LYRICS_VIS, K_DESKTOP_LYRICS_LCK, K_PLAYER_STATE, K_DESKTOP_LYRICS_BG } from '@/constants/storage-keys'
 
 import GlobalPlayer from '@/components/player/GlobalPlayer.vue'
 import SelectModal from '@/components/common/SelectModal.vue'
+import SplashOverlay from '@/components/splash/SplashOverlay.vue'
+import { useIdle } from '@/composables/useIdle'
+import { idleTimeoutSec } from '@/composables/useIdleTimeout'
 
 const router = useRouter()
 const route = useRoute()
@@ -80,6 +83,19 @@ const playerStore = usePlayerStore()
 const { offsetSeconds } = useLyricOffset()
 const openPlaylist = ref(false)
 const isMaximized = ref(false)
+
+// ========== 屏保 ==========
+const showScreensaver = ref(false)
+const idleTimeoutMs = computed(() => idleTimeoutSec.value * 1000)
+const { resetTimer: resetIdle } = useIdle({
+  timeout: idleTimeoutMs,
+  onIdle: () => { showScreensaver.value = true },
+  onActive: () => {}
+})
+function dismissScreensaver() {
+  showScreensaver.value = false
+  resetIdle()
+}
 
 // ========== 桌面歌词状态 ==========
 const desktopLyricsVisible = ref(localStorage.getItem(K_DESKTOP_LYRICS_VIS) === 'true')
@@ -104,8 +120,8 @@ const onSeek = (value) => {
 const onSetABPoint = ({ time }) => {
   if (playerStore.loopA != null && playerStore.loopB != null) {
     // 第三次右键：AB 都已有 → 清除
-    playerStore.loopA = null
-    playerStore.loopB = null
+    playerStore.loopA = undefined
+    playerStore.loopB = undefined
     playerStore.abLoop = false
   } else if (playerStore.loopA == null) {
     // 第一次右键：设 A 点
@@ -180,6 +196,7 @@ function sendLyricsTiming(forcePaused) {
       themeClass: themeClass.value,
       fontSize: Number(localStorage.getItem(K_LYRIC_SIZE) || 14),
       align: localStorage.getItem(K_LYRIC_ALIGN) || 'center',
+      bgOpacity: Number(localStorage.getItem(K_DESKTOP_LYRICS_BG) || 100) / 100,
     })
     lastLyricIdx = -1
     return
@@ -187,6 +204,7 @@ function sendLyricsTiming(forcePaused) {
 
   const fontSize = Number(localStorage.getItem(K_LYRIC_SIZE) || 14)
   const align = localStorage.getItem(K_LYRIC_ALIGN) || 'center'
+  const bgOpacity = Number(localStorage.getItem(K_DESKTOP_LYRICS_BG) || 18) / 100
   const data = {
     text: info.text,
     lineStartTime: info.start,
@@ -196,6 +214,7 @@ function sendLyricsTiming(forcePaused) {
     themeClass: themeClass.value,
     fontSize,
     align,
+    bgOpacity,
   }
 
   // 仅在行索引变化或播放状态切换时发送
@@ -261,6 +280,13 @@ watch(() => playerStore.currentSong, () => {
 watch(themeClass, () => {
   if (desktopLyricsVisible.value) sendLyricsTiming(!playerStore.isPlaying)
 })
+
+// 桌面歌词背景透明度变化时立即同步
+function onLyricBgChanged() {
+  if (desktopLyricsVisible.value) sendLyricsTiming(!playerStore.isPlaying)
+}
+onMounted(() => window.addEventListener('lyric-bg-changed', onLyricBgChanged))
+onUnmounted(() => window.removeEventListener('lyric-bg-changed', onLyricBgChanged))
 
 useShortcuts({
   togglePlay: () => playerStore.togglePlay(),

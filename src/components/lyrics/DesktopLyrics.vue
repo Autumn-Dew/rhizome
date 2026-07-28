@@ -15,6 +15,7 @@ const smoothProgress = ref(0)
 const themeClass = ref('theme-dark')
 const fontSize = ref(14)
 const align = ref('center')
+const bgOpacity = ref(1)
 // ---- 窗口锁定状态（锁定时隐藏边界背景） ----
 const locked = ref(false)
 const showBounds = computed(() => !locked.value)
@@ -38,6 +39,7 @@ const rootStyle = computed(() => ({
   fontSize: (fontSize.value + 1) + 'px',
   justifyContent: alignFlexMap[align.value] || 'center',
   textAlign: alignTextMap[align.value] || 'center',
+  '--bg-alpha': bgOpacity.value,
 }))
 
 // ---- 本地 RAF 平滑动画 ----
@@ -60,6 +62,7 @@ function applyUpdate(data) {
   if (data.themeClass) themeClass.value = data.themeClass
   if (data.fontSize) fontSize.value = data.fontSize
   if (data.align) align.value = data.align
+  if (data.bgOpacity !== undefined) bgOpacity.value = data.bgOpacity
 
   if (data.lineStartTime !== undefined && data.lineEndTime !== undefined) {
     lineStartTime = data.lineStartTime
@@ -119,7 +122,7 @@ html, body, #lyrics-app {
   background: transparent;
   -webkit-app-region: drag;
   overflow: hidden;
-  transition: background 0.25s;
+  transition: background var(--motion-duration-slow);
   padding: 16px;
   box-sizing: border-box;
 }
@@ -147,7 +150,7 @@ html, body, #lyrics-app {
   flex-shrink: 0;
 }
 
-/* 反色背景 (始终展开，对应 SongDetail .active::before) */
+/* 反色背景 — 透明度可调 */
 .lyric-line::before {
   content: '';
   position: absolute;
@@ -156,6 +159,7 @@ html, body, #lyrics-app {
   background: var(--dl-hover-bg);
   transform: scaleX(1);
   transform-origin: center;
+  opacity: var(--bg-alpha, 1);
 }
 
 /* 取景框四角 — 与 SongDetail 完全一致 */

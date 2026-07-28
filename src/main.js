@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import { createPinia } from 'pinia'
 import router from './router'
+import './assets/css/motion-tokens.css'
 import './assets/css/global-theme.css'
 
 const pinia = createPinia()

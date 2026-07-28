@@ -52,11 +52,15 @@ const version = '1.0.7'
   position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
   background: rgba(0,0,0,0.6); display: flex; align-items: center;
   justify-content: center; z-index: 9999;
+  animation: mt-fade-in var(--motion-duration-normal) var(--motion-easing-ease);
 }
+/* 注：mt-fade-in 定义在 motion-tokens.css（原 aboutMaskIn） */
 .about-modal {
   width: 300px; background: var(--bg-primary); color: var(--text-primary);
   border: 2px solid var(--border-color);
+  animation: mt-modal-in var(--motion-duration-slow) var(--motion-easing-standard);
 }
+/* 注：mt-modal-in 定义在 motion-tokens.css（原 aboutModalIn） */
 .about-header {
   padding: 14px 20px; border-bottom: 1px solid var(--border-color);
   display: flex; justify-content: space-between; align-items: center;

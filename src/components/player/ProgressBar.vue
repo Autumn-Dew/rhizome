@@ -165,7 +165,7 @@ const onWheel = (e) => {
   background: var(--progress-fill);
   width: 0%;
   pointer-events: none;
-  transition: width 0.1s linear;
+  transition: width var(--motion-duration-instant) var(--motion-easing-linear);
 }
 
 .rc-progress-input {
@@ -181,7 +181,7 @@ const onWheel = (e) => {
 
 .rc-progress-bar-container:hover .rc-progress-track {
   height: 6px;
-  transition: height 0.2s;
+  transition: height var(--motion-duration-normal);
 }
 
 .rc-progress-bar-container:hover .rc-progress-fill {

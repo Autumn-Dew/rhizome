@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, watch } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import { K_PLAY_MODE, K_VOLUME, K_PLAYER_STATE, K_AUDIO_DEVICE, K_PLAY_HISTORY_VIEW, K_PLAY_HISTORY_FULL, K_PLAY_COUNT_REAL } from '@/constants/storage-keys'
 import { PLAY_MODE_ICONS, PLAY_MODES } from '@/constants/defaults'
 
@@ -133,8 +133,8 @@ export const usePlayerStore = defineStore('player', () => {
 
     const volume = ref(1.0)
     const abLoop = ref(false)
-    const loopA = ref(null)
-    const loopB = ref(null)
+    const loopA = ref(undefined)
+    const loopB = ref(undefined)
 
     const savePlayerState = () => {
         if (!currentSong.value?.path) return
@@ -158,9 +158,12 @@ export const usePlayerStore = defineStore('player', () => {
     // ========== 自动保存：切歌时 + 播放中定期（解决 Electron 隐藏窗口不触发 beforeunload 的问题） ==========
     let autoSaveTimer = null
 
-    // 切歌时立即保存
+    // 切歌时立即保存，同时重置 AB 循环
     watch(currentSong, (song) => {
-        if (song?.path) savePlayerState()
+        if (song?.path) { savePlayerState() }
+        abLoop.value = false
+        loopA.value = undefined
+        loopB.value = undefined
     })
 
     // 播放中每 15 秒自动保存；暂停时也保存一次（捕获最终进度）
@@ -190,6 +193,10 @@ export const usePlayerStore = defineStore('player', () => {
 
     const playGlobalSong = (song) => {
         if (!song) return
+        // 切歌时重置 AB 循环
+        abLoop.value = false
+        loopA.value = undefined
+        loopB.value = undefined
         if (audio.value) {
             audio.value.pause()
             audio.value.onloadedmetadata = null
@@ -240,6 +247,12 @@ export const usePlayerStore = defineStore('player', () => {
         syncMediaMetadata()
         syncMediaState()
         initMediaControls()
+        // 切歌后异步确保 UI 层 AB 标记彻底清除
+        nextTick(() => {
+            abLoop.value = false
+            loopA.value = undefined
+            loopB.value = undefined
+        })
     }
 
     const setPlayList = (list) => {

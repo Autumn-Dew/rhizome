@@ -24,7 +24,7 @@
             <path :d="themeIcon" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
-        <button class="rc-sub-func-btn" @click="goSettings">
+        <button class="rc-sub-func-btn" :class="{ active: isSettingsActive }" @click="goSettings">
           <svg class="rc-sub-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
             <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" stroke-width="2"/>
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke-width="2"/>
@@ -34,19 +34,25 @@
     </div>
 
     <div class="rc-player-content">
-      <router-view />
+      <router-view v-slot="{ Component }">
+        <keep-alive :include="['LocalMusic']">
+          <component :is="Component" />
+        </keep-alive>
+      </router-view>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useGlobalTheme } from '@/composables/useGlobalTheme'
 
 const router = useRouter()
 const route = useRoute()
 const { themeClass, isDark, toggleTheme } = useGlobalTheme()
+
+const isSettingsActive = computed(() => route.path === '/player/settings')
 
 function goSettings() {
   router.push('/player/settings')
@@ -85,6 +91,7 @@ const activeSubFunc = ref('local')
 
 const updateActiveFromRoute = () => {
   const path = route.path
+  if (path === '/player/settings') { activeSubFunc.value = ''; return }
   if (path.startsWith('/player/playlist-detail/') || path.startsWith('/player/detail')) return
 
   const currentItem = playerSubFuncList.find(
@@ -101,6 +108,7 @@ const switchSubFunc = (key) => {
 }
 
 onMounted(updateActiveFromRoute)
+watch(() => route.path, updateActiveFromRoute)
 </script>
 
 <style scoped>
@@ -164,7 +172,7 @@ onMounted(updateActiveFromRoute)
   align-items: center;
   justify-content: center;
   position: relative;
-  transition: all 0.2s ease;
+  transition: var(--motion-btn-hover) var(--motion-easing-ease);
   cursor: pointer;
   border-radius: 0;
   flex-shrink: 0;

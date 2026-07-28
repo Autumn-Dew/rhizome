@@ -265,7 +265,7 @@ const handleClose = () => {
   background: var(--bg-primary);
   color: var(--text-primary);
   border-top: 2px solid var(--border-color);
-  animation: slideUp 0.25s ease forwards;
+  animation: mt-slide-up var(--motion-duration-slow) var(--motion-easing-ease) forwards;
   display: flex;
   flex-direction: column;
 }
@@ -273,7 +273,7 @@ const handleClose = () => {
 .rc-select-drawer.center {
   border-radius: 0;
   margin: auto;
-  animation: fadeIn 0.25s ease forwards;
+  animation: mt-fade-in var(--motion-duration-slow) var(--motion-easing-ease) forwards;
 }
 
 .rc-select-drawer.right {
@@ -283,22 +283,7 @@ const handleClose = () => {
   height: 100%;
   border-top: none;
   border-left: 2px solid var(--border-color);
-  animation: slideRight 0.25s ease forwards;
-}
-
-@keyframes slideUp {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
-}
-
-@keyframes slideRight {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0); }
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
+  animation: mt-slide-right var(--motion-duration-slow) var(--motion-easing-ease) forwards;
 }
 
 .rc-select-header {
@@ -355,7 +340,7 @@ const handleClose = () => {
   gap: 12px;
   padding: 10px 20px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background var(--motion-duration-normal);
 }
 
 .rc-select-item:hover {

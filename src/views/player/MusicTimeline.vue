@@ -7,10 +7,16 @@
           <h2>音乐时间线</h2>
           <p class="tl-desc">每次播放记录为一个站点</p>
         </div>
-        <button class="tl-back-btn" @click="goBack" title="返回播放历史">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
-          <span>返回</span>
-        </button>
+        <span class="tl-header-actions">
+          <button class="tl-entry-btn" @click="playAll" title="播放视图内全部歌曲">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3l14 9-14 9V3z"/></svg>
+            <span>播放全部</span>
+          </button>
+          <button class="tl-back-btn" @click="goBack" title="返回播放历史">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+            <span>返回</span>
+          </button>
+        </span>
       </div>
     </div>
 
@@ -86,6 +92,7 @@ const views = [
 let rawData = []
 let songMap = {}
 let songPlayCount = {}  // path → 总播放次数
+let visibleSongs = []   // 当前视图内的去重歌曲列表（用于 playList 同步）
 let viewStart = 0
 let viewEnd = 0
 let viewOrigStart = 0
@@ -98,6 +105,12 @@ let hoveredIdx = -1
 let tooltipTimeout = null
 
 function goBack() { router.back() }
+
+function playAll() {
+  if (!visibleSongs.length) return
+  playerStore.setPlayList(visibleSongs)
+  playerStore.playGlobalSong(visibleSongs[0])
+}
 
 function loadData() {
   try { rawData = JSON.parse(localStorage.getItem(K_PLAY_HISTORY_FULL) || '[]') }
@@ -152,6 +165,7 @@ function calcView() {
   viewOrigEnd = viewEnd
   viewCenter = (viewStart + viewEnd) / 2
   zoomLevel.value = 1
+  syncVisibleSongs()
 }
 
 function applyZoom() {
@@ -159,6 +173,20 @@ function applyZoom() {
   const half = origRange / (2 * zoomLevel.value)
   viewStart = Math.max(viewOrigStart, viewCenter - half)
   viewEnd   = Math.min(viewOrigEnd,   viewCenter + half)
+  syncVisibleSongs()
+}
+
+function syncVisibleSongs() {
+  const seen = new Set()
+  const songs = []
+  for (const d of rawData) {
+    if (d.playAt < viewStart || d.playAt >= viewEnd) continue
+    if (seen.has(d.path)) continue
+    seen.add(d.path)
+    const s = songMap[d.path]
+    if (s) songs.push(s)
+  }
+  visibleSongs = songs
 }
 
 function onZoomSlider(e) {
@@ -175,7 +203,7 @@ function goPrev() {
   viewOrigEnd   = viewEnd
   viewCenter = (viewStart + viewEnd) / 2
   zoomLevel.value = 1
-  view.value = 'custom'; draw()
+  view.value = 'custom'; syncVisibleSongs(); draw()
 }
 
 function goNext() {
@@ -187,7 +215,7 @@ function goNext() {
   viewOrigEnd   = viewEnd
   viewCenter = (viewStart + viewEnd) / 2
   zoomLevel.value = 1
-  view.value = 'custom'; draw()
+  view.value = 'custom'; syncVisibleSongs(); draw()
 }
 
 function setView(k) { view.value = k; calcView(); draw() }
@@ -418,7 +446,7 @@ function onWheel(e) {
   view.value = 'custom'; draw()
 }
 function onMouseDown(e) { dragging = true; dragStartX = e.clientX; dragStartView = viewStart }
-function onMouseUp() { dragging = false }
+function onMouseUp() { dragging = false; syncVisibleSongs() }
 
 function onMouseMove(e) {
   if (dragging) {
@@ -480,7 +508,7 @@ function onClick() {
   if (hoveredIdx < 0) return
   const d = rawData[hoveredIdx]
   const song = songMap[d.path]
-  if (song) { playerStore.setPlayList(localMusicStore.songList); playerStore.playGlobalSong(song) }
+  if (song) { playerStore.setPlayList(visibleSongs.length ? visibleSongs : localMusicStore.songList); playerStore.playGlobalSong(song) }
 }
 
 let resizeTimer = null
@@ -532,25 +560,26 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); clearTimeout
   width: 100%; height: 2px;
   background: var(--border-color);
   transform: scaleX(0);
-  transition: transform 0.25s cubic-bezier(0.25, 0, 0, 1);
+  transition: transform var(--motion-duration-slow) var(--motion-easing-enter);
 }
 .entered .tl-header::after { transform: scaleX(1); }
 
 .tl-header-row { display: flex; justify-content: space-between; align-items: flex-start; }
+.tl-header-actions { display: flex; gap: 8px; }
 
 .tl-header h2 {
   font-size: 20px; margin: 0 0 4px;
   opacity: 0; transform: translateY(-10px); letter-spacing: 3px;
-  transition: opacity 0.18s cubic-bezier(0.2, 0, 0.2, 1),
-              transform 0.18s cubic-bezier(0.2, 0, 0.2, 1),
-              letter-spacing 0.25s cubic-bezier(0.2, 0, 0.2, 1);
+  transition: opacity var(--motion-duration-medium) var(--motion-easing-standard),
+              transform var(--motion-duration-medium) var(--motion-easing-standard),
+              letter-spacing var(--motion-duration-slow) var(--motion-easing-standard);
 }
 .entered .tl-header h2 { opacity: 1; transform: translateY(0); letter-spacing: 0; }
 
 .tl-desc {
   font-size: 12px; margin: 0;
   opacity: 0; transform: translateY(-6px);
-  transition: opacity 0.15s ease 0.04s, transform 0.15s ease 0.04s;
+  transition: opacity var(--motion-duration-fast) var(--motion-easing-ease) 0.04s, transform var(--motion-duration-fast) var(--motion-easing-ease) 0.04s;
 }
 .entered .tl-desc { opacity: 0.7; transform: translateY(0); }
 
@@ -564,13 +593,31 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); clearTimeout
   font-size: 12px; font-family: monospace;
   cursor: pointer; flex-shrink: 0;
   opacity: 0; transform: scaleX(0);
-  transition: opacity 0.12s ease 0.06s,
-              transform 0.13s cubic-bezier(0.25, 0, 0, 1) 0.06s,
-              background 0.2s, color 0.2s;
+  transition: opacity var(--motion-duration-micro) var(--motion-easing-ease) 0.06s,
+              transform var(--motion-duration-btn-transform) var(--motion-easing-enter) 0.06s,
+              background var(--motion-duration-normal), color var(--motion-duration-normal);
 }
 .entered .tl-back-btn { opacity: 1; transform: scaleX(1); }
 .tl-back-btn:hover { background: var(--btn-hover-bg); color: var(--btn-hover-text); }
 .tl-back-btn svg { width: 15px; height: 15px; }
+
+/* header 播放全部按钮 */
+.tl-entry-btn {
+  display: flex; align-items: center; gap: 6px;
+  height: 32px; padding: 0 12px;
+  border: 2px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 12px; font-family: monospace;
+  cursor: pointer; flex-shrink: 0;
+  opacity: 0; transform: scaleX(0);
+  transition: opacity var(--motion-duration-micro) var(--motion-easing-ease) 0.02s,
+              transform var(--motion-duration-btn-transform) var(--motion-easing-enter) 0.02s,
+              background var(--motion-duration-normal), color var(--motion-duration-normal);
+}
+.entered .tl-entry-btn { opacity: 1; transform: scaleX(1); }
+.tl-entry-btn:hover { background: var(--btn-hover-bg); color: var(--btn-hover-text); }
+.tl-entry-btn svg { width: 15px; height: 15px; fill: none; stroke: currentColor; }
 
 /* ═══ 工具栏 ═══ */
 .tl-toolbar {
@@ -584,7 +631,7 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); clearTimeout
   width: 100%; height: 2px;
   background: var(--border-color);
   transform: scaleX(0);
-  transition: transform 0.25s cubic-bezier(0.25, 0, 0, 1);
+  transition: transform var(--motion-duration-slow) var(--motion-easing-enter);
 }
 .entered .tl-toolbar::after { transform: scaleX(1); }
 
@@ -596,9 +643,9 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); clearTimeout
   font-size: 11px; font-family: monospace;
   cursor: pointer;
   opacity: 0; transform: scaleX(0);
-  transition: opacity 0.12s ease 0.12s,
-              transform 0.13s cubic-bezier(0.25, 0, 0, 1) 0.12s,
-              background 0.2s, color 0.2s;
+  transition: opacity var(--motion-duration-micro) var(--motion-easing-ease) 0.12s,
+              transform var(--motion-duration-btn-transform) var(--motion-easing-enter) 0.12s,
+              background var(--motion-duration-normal), color var(--motion-duration-normal);
 }
 .tl-nav-btn { padding: 0 8px; font-size: 12px; }
 
@@ -611,7 +658,7 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); clearTimeout
 
 .tl-hint {
   margin-left: auto; font-size: 10px; font-family: monospace;
-  opacity: 0; transition: opacity 0.15s ease 0.20s;
+  opacity: 0; transition: opacity var(--motion-duration-fast) var(--motion-easing-ease) 0.20s;
 }
 .entered .tl-hint { opacity: 0.35; }
 
@@ -622,7 +669,7 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); clearTimeout
 .tl-canvas {
   width: 100%; height: 100%; cursor: crosshair;
   opacity: 0;
-  transition: opacity 0.25s ease 0.44s;
+  transition: opacity var(--motion-duration-slow) var(--motion-easing-ease) 0.44s;
 }
 .entered .tl-canvas { opacity: 1; }
 .tl-canvas:active { cursor: grabbing; }
@@ -632,7 +679,7 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); clearTimeout
   position: absolute; top: 8px; right: 12px;
   display: flex; align-items: center; gap: 6px;
   z-index: 2;
-  opacity: 0; transition: opacity 0.2s ease 0.50s;
+  opacity: 0; transition: opacity var(--motion-duration-normal) var(--motion-easing-ease) 0.50s;
 }
 .entered .tl-zoom { opacity: 1; }
 
@@ -664,7 +711,7 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); clearTimeout
   background: var(--btn-hover-bg);
   color: var(--btn-hover-text);
   opacity: 0; pointer-events: none;
-  transition: opacity 0.12s;
+  transition: opacity var(--motion-duration-micro) var(--motion-easing-ease);
   z-index: 10;
 }
 .tl-hover-bar.visible { opacity: 1; }

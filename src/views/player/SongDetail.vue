@@ -88,7 +88,7 @@
                   v-for="(line, idx) in lyrics"
                   :key="idx"
                   :class="{ active: idx === currentLine }"
-                  :style="idx === currentLine ? { '--lyric-progress': lyricProgress } : {}"
+                  :style="idx === currentLine ? { '--lyric-progress': lyricProgress } : staggerStyle(idx)"
                   @click="clickToJump(line.time)"
               >
                 <span>{{ line.text }}</span>
@@ -436,8 +436,8 @@ const goBack = () => router.back()
   position: relative;
   opacity: 0;
   transform: translateY(-12px);
-  transition: opacity 0.2s cubic-bezier(0.2, 0, 0.2, 1) 0.06s,
-              transform 0.2s cubic-bezier(0.2, 0, 0.2, 1) 0.06s;
+  transition: opacity var(--motion-duration-normal) var(--motion-easing-standard) 0.06s,
+              transform var(--motion-duration-normal) var(--motion-easing-standard) 0.06s;
 }
 /* 竖线动效 */
 .detail-header::before {
@@ -447,7 +447,7 @@ const goBack = () => router.back()
   width: 2px; height: 100%;
   background: var(--border);
   transform: scaleY(0);
-  transition: transform 0.25s cubic-bezier(0.25, 0, 0, 1) 0.04s;
+  transition: transform var(--motion-duration-slow) var(--motion-easing-enter) 0.04s;
 }
 .entered .detail-header::before { transform: scaleY(1); }
 .entered .detail-header {
@@ -456,7 +456,7 @@ const goBack = () => router.back()
 }
 .detail-header .song-title {
   letter-spacing: 4px;
-  transition: letter-spacing 0.25s cubic-bezier(0.2, 0, 0.2, 1) 0.06s;
+  transition: letter-spacing var(--motion-duration-slow) var(--motion-easing-standard) 0.06s;
 }
 .entered .detail-header .song-title {
   letter-spacing: 0;
@@ -476,7 +476,7 @@ const goBack = () => router.back()
   background: var(--border);
   transform: scaleX(0);
   transform-origin: left center;
-  transition: transform 0.16s cubic-bezier(0.5, 0, 0.3, 1);
+  transition: transform 0.16s var(--motion-easing-swipe);
   z-index: 2;
   pointer-events: none;
 }
@@ -509,7 +509,7 @@ const goBack = () => router.back()
   cursor: pointer;
   font-size: 12px;
   padding: 4px 10px;
-  transition: all .2s;
+  transition: var(--motion-btn-hover);
 }
 
 .back-btn svg {
@@ -551,9 +551,9 @@ const goBack = () => router.back()
   opacity: 0;
   transform: translateX(-40px);
   clip-path: inset(0 0 0 0);
-  transition: opacity 0.22s cubic-bezier(0.2, 0, 0.2, 1),
-              transform 0.22s cubic-bezier(0.2, 0, 0.2, 1),
-              clip-path 0.2s cubic-bezier(0.25, 0, 0, 1);
+  transition: opacity 0.22s var(--motion-easing-standard),
+              transform 0.22s var(--motion-easing-standard),
+              clip-path var(--motion-duration-normal) var(--motion-easing-enter);
 }
 .entered .album-cover {
   opacity: 1;
@@ -600,10 +600,10 @@ const goBack = () => router.back()
   cursor: pointer;
   opacity: 0;
   transform: scaleX(0);
-  transition: opacity 0.12s ease,
-              transform 0.15s cubic-bezier(0.25, 0, 0, 1),
-              background 0.2s,
-              color 0.2s;
+  transition: opacity var(--motion-duration-micro) var(--motion-easing-ease),
+              transform var(--motion-duration-fast) var(--motion-easing-enter),
+              background var(--motion-duration-normal),
+              color var(--motion-duration-normal);
 }
 .player-controls .control-btn:nth-child(1) { transition-delay: 0.16s; }
 .player-controls .control-btn:nth-child(2) { transition-delay: 0.2s; }
@@ -638,7 +638,7 @@ const goBack = () => router.back()
   align-items: center;
   gap: 8px;
   opacity: 0;
-  transition: opacity 0.18s ease 0.28s;
+  transition: opacity var(--motion-duration-medium) var(--motion-easing-ease) 0.28s;
 }
 .entered .progress-section {
   opacity: 1;
@@ -656,7 +656,7 @@ const goBack = () => router.back()
   position: relative;
   cursor: pointer;
   transform: scaleX(0);
-  transition: transform 0.2s cubic-bezier(0.25, 0, 0.25, 1) 0.28s;
+  transition: transform var(--motion-duration-normal) var(--motion-easing-enter) 0.28s;
 }
 .entered .progress-bar-container {
   transform: scaleX(1);
@@ -707,7 +707,7 @@ const goBack = () => router.back()
   background: var(--border);
   width: 0%;
   pointer-events: none;
-  transition: width 0.1s linear;
+  transition: width var(--motion-duration-instant) var(--motion-easing-linear);
 }
 
 .progress-input {
@@ -723,7 +723,7 @@ const goBack = () => router.back()
 
 .progress-bar-container:hover .progress-track {
   height: 6px;
-  transition: height 0.2s;
+  transition: height var(--motion-duration-normal);
 }
 
 .progress-bar-container:hover .progress-fill {
@@ -757,13 +757,16 @@ const goBack = () => router.back()
   padding: 2px 6px;
   border: 1px solid var(--border);
   opacity: 0;
-  transition: opacity 0.12s ease;
+  transform: translateX(-8px);
+  transition: opacity var(--motion-duration-micro) var(--motion-easing-standard),
+              transform var(--motion-duration-btn-transform) var(--motion-easing-enter);
 }
 .switching .song-meta span {
   animation: sd-info-blink 0.36s ease-out;
 }
 .entered .song-meta span {
   opacity: 1;
+  transform: translateX(0);
 }
 .song-meta span:nth-child(1) { transition-delay: 0.36s; }
 .song-meta span:nth-child(2) { transition-delay: 0.39s; }
@@ -789,8 +792,8 @@ const goBack = () => router.back()
   margin-bottom: 4px;
   opacity: 0;
   transform: translateX(6px);
-  transition: opacity 0.18s ease 0.32s,
-              transform 0.18s cubic-bezier(0.2, 0, 0.2, 1) 0.32s;
+  transition: opacity var(--motion-duration-medium) var(--motion-easing-ease) 0.32s,
+              transform var(--motion-duration-medium) var(--motion-easing-standard) 0.32s;
 }
 .switching .song-stats {
   animation: sd-info-blink 0.4s ease-out;
@@ -814,7 +817,7 @@ const goBack = () => router.back()
 .lyrics-section {
   flex: 1; min-width: 0;
   opacity: 0;
-  transition: opacity 0.15s ease 0.3s;
+  transition: opacity var(--motion-duration-fast) var(--motion-easing-ease) 0.3s;
 }
 .entered .lyrics-section {
   opacity: 1;
@@ -826,7 +829,7 @@ const goBack = () => router.back()
   border: 2px solid var(--border-color);
   background: var(--bg-secondary); color: var(--text-primary);
   cursor: pointer; display: flex; align-items: center; justify-content: center;
-  transition: all 0.2s; z-index: 5;
+  transition: var(--motion-btn-hover); z-index: 5;
 }
 .lyrics-fullscreen-btn:hover { background: var(--btn-hover-bg); color: var(--btn-hover-text); }
 .lyrics-fullscreen-btn svg { width: 14px; height: 14px; }
@@ -839,8 +842,8 @@ const goBack = () => router.back()
   border: 2px solid transparent;
   opacity: 0;
   transform: translateX(-30px);
-  transition: opacity 0.22s cubic-bezier(0.2, 0, 0.2, 1) 0.3s,
-              transform 0.22s cubic-bezier(0.2, 0, 0.2, 1) 0.3s;
+  transition: opacity 0.22s var(--motion-easing-standard) 0.3s,
+              transform 0.22s var(--motion-easing-standard) 0.3s;
 }
 .entered .lyrics-frame {
   opacity: 1;
@@ -942,7 +945,7 @@ const goBack = () => router.back()
   text-align: center;
   margin: 0;
   padding: 6px 64px;
-  transition: all 0.2s;
+  transition: var(--motion-btn-hover);
   opacity: 0.5;
   cursor: pointer;
   transform: scale(0.95);
@@ -960,7 +963,7 @@ const goBack = () => router.back()
   background: var(--btn-hover-bg);
   transform: scaleX(0);
   transform-origin: center;
-  transition: transform 0.28s cubic-bezier(0.25, 0, 0, 1);
+  transition: transform 0.28s var(--motion-easing-enter);
 }
 
 /* ---------- 取景框四角 + 顶边刻度 ::after ---------- */
@@ -971,7 +974,7 @@ const goBack = () => router.back()
   pointer-events: none;
   opacity: 0;
   transform: scale(0.8);
-  transition: opacity 0.2s, transform 0.28s cubic-bezier(0.25, 0, 0, 1);
+  transition: opacity var(--motion-duration-normal), transform 0.28s var(--motion-easing-enter);
   background:
     /* top-left L */
     linear-gradient(to right, var(--border) 10px, transparent 0) 0 0 / 100% 2px no-repeat,
@@ -999,7 +1002,7 @@ const goBack = () => router.back()
   background: var(--btn-hover-text);
   transform: translateY(-50%) scaleX(calc(1 - var(--lyric-progress, 0)));
   transform-origin: right center;
-  transition: transform 0.2s linear;
+  transition: transform var(--motion-duration-normal) linear;
   opacity: 0;
 }
 
@@ -1013,7 +1016,7 @@ const goBack = () => router.back()
   background: var(--btn-hover-text);
   transform: translateY(-50%) scaleX(calc(1 - var(--lyric-progress, 0)));
   transform-origin: left center;
-  transition: transform 0.2s linear;
+  transition: transform var(--motion-duration-normal) linear;
   opacity: 0;
 }
 
@@ -1131,7 +1134,7 @@ const goBack = () => router.back()
 .lyrics-fullscreen-container p {
   font-size: 20px; line-height: 1.5; margin: 0;
   text-align: center; padding: 8px 64px;
-  transition: all 0.25s; opacity: 0.35;
+  transition: all var(--motion-duration-slow); opacity: 0.35;
   cursor: pointer; position: relative;
   transform: scale(0.95); white-space: pre-line;
 }
@@ -1147,7 +1150,7 @@ const goBack = () => router.back()
   background: var(--btn-hover-bg);
   transform: scaleX(var(--lyric-progress, 0));
   transform-origin: left;
-  transition: transform 0.1s linear;
+  transition: transform var(--motion-duration-instant) var(--motion-easing-linear);
 }
 
 .lyrics-fullscreen-container .empty-lyrics {

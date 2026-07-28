@@ -13,7 +13,6 @@ declare module 'vue' {
   export interface GlobalComponents {
     AboutModal: typeof import('./src/components/common/AboutModal.vue')['default']
     DesktopLyrics: typeof import('./src/components/lyrics/DesktopLyrics.vue')['default']
-    ElEmpty: typeof import('element-plus/es')['ElEmpty']
     FavoriteButton: typeof import('./src/components/common/FavoriteButton.vue')['default']
     GlobalPlayer: typeof import('./src/components/player/GlobalPlayer.vue')['default']
     PlaybackControls: typeof import('./src/components/player/PlaybackControls.vue')['default']
@@ -21,6 +20,7 @@ declare module 'vue' {
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SelectModal: typeof import('./src/components/common/SelectModal.vue')['default']
+    SplashOverlay: typeof import('./src/components/splash/SplashOverlay.vue')['default']
     Timestamp: typeof import('./src/components/player/Timestamp.vue')['default']
     VolumeControl: typeof import('./src/components/player/VolumeControl.vue')['default']
   }

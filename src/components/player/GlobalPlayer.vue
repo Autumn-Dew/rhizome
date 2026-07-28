@@ -31,6 +31,7 @@
       />
       <canvas ref="spectrumCanvas" class="gp-spectrum" :class="{ 'gp-spectrum--hidden': !isPlaying }"></canvas>
       <ProgressBar
+          :key="displaySong?.path"
           :current-value="currentTime"
           :max-value="duration"
           :loop-a="loopA"
@@ -216,7 +217,7 @@ watch(() => props.currentSong, (song) => {
   flex-shrink: 0;
   background: var(--bg-secondary);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: var(--motion-control-hover);
   position: relative;
 }
 
@@ -283,7 +284,7 @@ watch(() => props.currentSong, (song) => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: var(--motion-control-hover);
   border-radius: 0;
   flex-shrink: 0;
 }
@@ -311,10 +312,12 @@ watch(() => props.currentSong, (song) => {
   width: 60px;
   height: 40px;
   flex-shrink: 0;
+  opacity: 1;
+  transition: opacity var(--motion-duration-slow) var(--motion-easing-ease);
 }
-
 .gp-spectrum--hidden {
-  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .mode-btn .rc-tooltip {
@@ -343,7 +346,7 @@ watch(() => props.currentSong, (song) => {
 /* 封面：四角收拢再展开 */
 .album-thumb {
   clip-path: inset(0 0 0 0);
-  transition: clip-path 0.18s cubic-bezier(0.25, 0, 0, 1);
+  transition: clip-path 0.18s var(--motion-easing-enter);
 }
 .switching .album-thumb {
   clip-path: inset(50% 50% 50% 50%);
@@ -364,7 +367,7 @@ watch(() => props.currentSong, (song) => {
   background: var(--border-color);
   transform: scaleX(0);
   transform-origin: left center;
-  transition: transform 0.18s cubic-bezier(0.5, 0, 0.3, 1);
+  transition: transform var(--motion-duration-medium) var(--motion-easing-swipe);
   z-index: 2;
   pointer-events: none;
 }
@@ -383,12 +386,8 @@ watch(() => props.currentSong, (song) => {
   z-index: 1;
 }
 .switching .rc-progress-track::after {
-  animation: gp-progress-pulse 0.36s ease-out;
+  animation: mt-pulse 0.36s ease-out;
 }
-@keyframes gp-progress-pulse {
-  0% { opacity: 0; }
-  30% { opacity: 0.5; }
-  100% { opacity: 0; }
-}
+/* 注：mt-pulse 定义在 motion-tokens.css（原 gp-progress-pulse） */
 
 </style>

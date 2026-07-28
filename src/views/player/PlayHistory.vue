@@ -175,7 +175,7 @@ onMounted(() => {
 .history-header::after {
   content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 2px;
   background: var(--border-color); transform: scaleX(0);
-  transition: transform 0.25s cubic-bezier(0.25, 0, 0, 1);
+  transition: transform var(--motion-duration-slow) var(--motion-easing-enter);
 }
 .entered .history-header::after { transform: scaleX(1); }
 
@@ -204,9 +204,16 @@ onMounted(() => {
   font-size: 12px;
   font-family: monospace;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: var(--motion-btn-hover);
   flex-shrink: 0;
 }
+.header-actions .tl-entry-btn {
+  opacity: 0; transform: scaleX(0);
+  transition: opacity var(--motion-duration-micro) var(--motion-easing-ease), transform var(--motion-duration-btn-transform) var(--motion-easing-enter);
+}
+.header-actions .tl-entry-btn:nth-child(1) { transition-delay: 0.10s; }
+.header-actions .tl-entry-btn:nth-child(2) { transition-delay: 0.15s; }
+.entered .header-actions .tl-entry-btn { opacity: 1; transform: scaleX(1); }
 .tl-entry-btn:hover {
   background: var(--btn-hover-bg);
   color: var(--btn-hover-text);
@@ -231,7 +238,7 @@ onMounted(() => {
 .history-toolbar::after {
   content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 2px;
   background: var(--border-color); transform: scaleX(0);
-  transition: transform 0.25s cubic-bezier(0.25, 0, 0, 1);
+  transition: transform var(--motion-duration-slow) var(--motion-easing-enter);
 }
 .entered .history-toolbar::after { transform: scaleX(1); }
 
@@ -280,7 +287,7 @@ onMounted(() => {
   background: var(--btn-hover-bg);
   transform: scaleX(0);
   transform-origin: center;
-  transition: transform 0.25s ease;
+  transition: transform var(--motion-duration-slow) var(--motion-easing-ease);
 }
 
 .song-item:hover::before {
@@ -363,7 +370,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all .2s;
+  transition: var(--motion-btn-hover);
 }
 
 .song-btn:hover {
@@ -416,7 +423,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: var(--motion-btn-hover);
 }
 .float-btn svg {
   width: 18px;
@@ -434,9 +441,9 @@ onMounted(() => {
   opacity: 0;
   transform: translateY(-10px);
   letter-spacing: 3px;
-  transition: opacity 0.18s cubic-bezier(0.2, 0, 0.2, 1),
-              transform 0.18s cubic-bezier(0.2, 0, 0.2, 1),
-              letter-spacing 0.25s cubic-bezier(0.2, 0, 0.2, 1);
+  transition: opacity var(--motion-duration-medium) var(--motion-easing-standard),
+              transform var(--motion-duration-medium) var(--motion-easing-standard),
+              letter-spacing var(--motion-duration-slow) var(--motion-easing-standard);
 }
 .entered .history-header h2 {
   opacity: 1;
@@ -447,8 +454,8 @@ onMounted(() => {
 .history-header .desc {
   opacity: 0;
   transform: translateY(-6px);
-  transition: opacity 0.15s ease 0.04s,
-              transform 0.15s ease 0.04s;
+  transition: opacity var(--motion-duration-fast) var(--motion-easing-ease) 0.04s,
+              transform var(--motion-duration-fast) var(--motion-easing-ease) 0.04s;
 }
 .entered .history-header .desc {
   opacity: 1;
@@ -458,8 +465,8 @@ onMounted(() => {
 .history-toolbar .rc-global-btn {
   opacity: 0;
   transform: scaleX(0);
-  transition: opacity 0.12s ease,
-              transform 0.13s cubic-bezier(0.25, 0, 0, 1);
+  transition: opacity var(--motion-duration-micro) var(--motion-easing-ease),
+              transform var(--motion-duration-btn-transform) var(--motion-easing-enter);
 }
 .history-toolbar .rc-global-btn:nth-child(1) { transition-delay: 0.08s; }
 .history-toolbar .rc-global-btn:nth-child(2) { transition-delay: 0.16s; }
@@ -471,8 +478,8 @@ onMounted(() => {
 .song-item {
   opacity: 0;
   transform: translateX(-20px);
-  transition: opacity 0.15s cubic-bezier(0.2, 0, 0.2, 1),
-              transform 0.15s cubic-bezier(0.2, 0, 0.2, 1);
+  transition: opacity var(--motion-duration-fast) var(--motion-easing-standard),
+              transform var(--motion-duration-fast) var(--motion-easing-standard);
 }
 .entered .song-item {
   opacity: 1;

@@ -1,153 +1,562 @@
 <!doctype html>
 <html lang="zh-CN">
-  <head>
+<head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Rhizome · 音乐播放器</title>
     <style>
-      /* ====== Splash Screen ====== */
-      #rhizome-splash {
-        position: fixed; inset: 0; z-index: 99999;
-        background: #121212;
-        display: flex; flex-direction: column;
-        align-items: center; justify-content: center;
-      }
-      #rhizome-splash.hidden {
-        opacity: 0;
-        transition: opacity 0.5s ease 0.2s;
-        pointer-events: none;
-      }
+        /* ====== Splash Screen ====== */
+        #rhizome-splash {
+            position: fixed; inset: 0; z-index: 99999;
+            background: #121212;
+            overflow: hidden;
+            pointer-events: all;
+        }
+        #rhizome-splash.hidden {
+            opacity: 0;
+            transition: opacity 0.25s ease;
+            pointer-events: none;
+        }
 
-      /* 四角装饰 — 歌词取景框同款 */
-      .splash-corner {
-        position: fixed;
-        left: 0; top: 0;
-        width: 32px; height: 32px;
-        z-index: 100000;
-        border-color: rgba(255,255,255,0.7);
-        border-style: solid;
-        pointer-events: none;
-        will-change: transform;
-      }
-      .corner-tl {
-        border-width: 2px 0 0 2px;
-        transform: translate(calc(50vw - 16px), calc(50vh - 16px)) scale(1.3);
-        animation: corner-tl 0.75s 0.08s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
-      }
-      .corner-tr {
-        border-width: 2px 2px 0 0;
-        transform: translate(calc(50vw - 16px), calc(50vh - 16px)) scale(1.3);
-        animation: corner-tr 0.75s 0.08s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
-      }
-      .corner-bl {
-        border-width: 0 0 2px 2px;
-        transform: translate(calc(50vw - 16px), calc(50vh - 16px)) scale(1.3);
-        animation: corner-bl 0.75s 0.08s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
-      }
-      .corner-br {
-        border-width: 0 2px 2px 0;
-        transform: translate(calc(50vw - 16px), calc(50vh - 16px)) scale(1.3);
-        animation: corner-br 0.75s 0.08s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
-      }
+        /* ━━━ 四角边框 ━━━ */
+        .splash-bracket {
+            position: fixed;
+            width: 22px; height: 22px;
+            z-index: 99997;
+            pointer-events: none;
+            opacity: 0;
+            animation: bracket-in 0.3s var(--delay) cubic-bezier(0.2, 0, 0.2, 1) forwards;
+        }
+        .splash-bracket::before,
+        .splash-bracket::after {
+            content: '';
+            position: absolute;
+            background: rgba(255,255,255,0.4);
+        }
+        .splash-bracket::before { width: 100%; height: 1px; }
+        .splash-bracket::after { width: 1px; height: 100%; }
+        .bracket-tl { top: 14px; left: 14px; --delay: 0.02s; }
+        .bracket-tl::before, .bracket-tl::after { top: 0; left: 0; }
+        .bracket-tr { top: 14px; right: 14px; --delay: 0.04s; }
+        .bracket-tr::before, .bracket-tr::after { top: 0; right: 0; }
+        .bracket-bl { bottom: 14px; left: 14px; --delay: 0.06s; }
+        .bracket-bl::before, .bracket-bl::after { bottom: 0; left: 0; }
+        .bracket-br { bottom: 14px; right: 14px; --delay: 0.08s; }
+        .bracket-br::before, .bracket-br::after { bottom: 0; right: 0; }
+        @keyframes bracket-in {
+            from { opacity: 0; transform: scale(0.5); }
+            to   { opacity: 1; transform: scale(1); }
+        }
 
-      @keyframes corner-tl {
-        0%   { transform: translate(calc(50vw - 16px), calc(50vh - 16px)) scale(1.3); opacity: 0.6; }
-        100% { transform: translate(28px, 28px) scale(1); opacity: 1; }
-      }
-      @keyframes corner-tr {
-        0%   { transform: translate(calc(50vw - 16px), calc(50vh - 16px)) scale(1.3); opacity: 0.6; }
-        100% { transform: translate(calc(100vw - 60px), 28px) scale(1); opacity: 1; }
-      }
-      @keyframes corner-bl {
-        0%   { transform: translate(calc(50vw - 16px), calc(50vh - 16px)) scale(1.3); opacity: 0.6; }
-        100% { transform: translate(28px, calc(100vh - 60px)) scale(1); opacity: 1; }
-      }
-      @keyframes corner-br {
-        0%   { transform: translate(calc(50vw - 16px), calc(50vh - 16px)) scale(1.3); opacity: 0.6; }
-        100% { transform: translate(calc(100vw - 60px), calc(100vh - 60px)) scale(1); opacity: 1; }
-      }
+        /* ━━━ 四角锁链（对角，向内延伸）━━━ */
+        .splash-chain {
+            position: fixed;
+            z-index: 99999;
+            height: 2px;
+            background: rgba(255,255,255,0.55);
+            transform-origin: var(--origin);
+            animation: chain-grow 0.5s var(--delay) cubic-bezier(0.25, 0, 0, 1) forwards;
+            pointer-events: none;
+        }
+        .chain-tl { --origin: left top;    top: 24px; left: 24px;   width: 0; transform: rotate(45deg);   --delay: 0.30s; }
+        .chain-tr { --origin: right top;   top: 24px; right: 24px;  width: 0; transform: rotate(-45deg);  --delay: 0.33s; }
+        .chain-bl { --origin: left bottom; bottom: 24px; left: 24px; width: 0; transform: rotate(-45deg); --delay: 0.36s; }
+        .chain-br { --origin: right bottom; bottom: 24px; right: 24px; width: 0; transform: rotate(45deg); --delay: 0.39s; }
+        @keyframes chain-grow {
+            from { width: 0; opacity: 0.4; }
+            to   { width: 118px; opacity: 1; }
+        }
 
-      /* 方形脉冲 — 比例跟随窗口 */
-      .splash-pulse {
-        position: fixed;
-        left: 50%; top: 50%;
-        width: 4vw; height: 4vh;
-        border: 1.5px solid rgba(255,255,255,0.4);
-        transform: translate(-50%, -50%) scale(0.2);
-        opacity: 0;
-        pointer-events: none;
-        z-index: 99999;
-        animation: pulse-out 0.75s 0.02s cubic-bezier(0.3, 0, 0.7, 1) forwards;
-      }
-      @keyframes pulse-out {
-        0%   { transform: translate(-50%, -50%) scale(0.2); opacity: 0.75; }
-        100% { transform: translate(-50%, -50%) scale(42); opacity: 0; }
-      }
+        /* ━━━ 四边中点锁链（垂直/水平，向内延伸）━━━ */
+        .splash-chain2 {
+            position: fixed;
+            z-index: 99998;
+            background: rgba(255,255,255,0.45);
+            pointer-events: none;
+            animation-timing-function: cubic-bezier(0.25, 0, 0, 1);
+            animation-fill-mode: forwards;
+        }
+        .chain2-top    { top: 24px; left: 50%; width: 2px; height: 0; transform: translateX(-50%); animation: chain2-grow-v 0.5s 0.42s forwards; }
+        .chain2-bottom { bottom: 24px; left: 50%; width: 2px; height: 0; transform: translateX(-50%); animation: chain2-grow-v 0.5s 0.45s forwards; }
+        .chain2-left   { left: 24px; top: 50%; height: 2px; width: 0; transform: translateY(-50%); animation: chain2-grow-h 0.5s 0.48s forwards; }
+        .chain2-right  { right: 24px; top: 50%; height: 2px; width: 0; transform: translateY(-50%); animation: chain2-grow-h 0.5s 0.51s forwards; }
+        @keyframes chain2-grow-v { from { height: 0; opacity: 0.3; } to { height: 108px; opacity: 1; } }
+        @keyframes chain2-grow-h { from { width: 0; opacity: 0.3; } to { width: 108px; opacity: 1; } }
 
-      /* Logo 光晕 + 文字 */
-      #rhizome-splash .splash-logo-wrap {
-        position: relative;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-      }
-      #rhizome-splash .splash-glow {
-        position: absolute;
-        top: 50%; left: 50%;
-        width: 200px; height: 200px;
-        transform: translate(-50%, -50%);
-        background: radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%);
-        opacity: 0;
-        animation: glow-in 0.8s ease 0.5s forwards;
-      }
-      @keyframes glow-in {
-        to { opacity: 1; }
-      }
-      #rhizome-splash .splash-logo {
-        position: relative;
-        font-size: 48px; font-weight: 700;
-        font-family: "Microsoft YaHei", sans-serif;
-        color: #ffffff;
-        letter-spacing: 8px;
-        opacity: 0;
-        transform: scale(0.6);
-        animation: logo-in 0.5s cubic-bezier(0.2, 0, 0.2, 1) 0.4s forwards;
-      }
-      #rhizome-splash .splash-sub {
-        position: relative;
-        margin-top: 14px;
-        font-size: 13px;
-        color: rgba(255,255,255,0.3);
-        font-family: "Microsoft YaHei", sans-serif;
-        letter-spacing: 3px;
-        opacity: 0;
-        animation: sub-in 0.4s ease 0.55s forwards;
-      }
-      @keyframes logo-in {
-        from { opacity: 0; transform: scale(0.6); }
-        to   { opacity: 1; transform: scale(1); }
-      }
-      @keyframes sub-in {
-        from { opacity: 0; transform: translateY(6px); }
-        to   { opacity: 1; transform: translateY(0); }
-      }
+        /* ━━━ 锁链流光（沿对角链条奔向外环）━━━ */
+        .splash-spark {
+            position: fixed;
+            z-index: 100000;
+            pointer-events: none;
+            width: 4px; height: 4px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.85);
+            box-shadow: 0 0 6px 1px rgba(255,255,255,0.3);
+            animation-duration: 0.45s;
+            animation-timing-function: cubic-bezier(0.3, 0, 0.7, 1);
+            animation-fill-mode: forwards;
+            animation-delay: var(--travel-delay);
+        }
+        .spark-tl { top: 24px; left: 24px;   --travel-delay: 0.85s; animation-name: spark-tl; }
+        .spark-tr { top: 24px; right: 24px;  --travel-delay: 0.88s; animation-name: spark-tr; }
+        .spark-bl { bottom: 24px; left: 24px; --travel-delay: 0.91s; animation-name: spark-bl; }
+        .spark-br { bottom: 24px; right: 24px; --travel-delay: 0.94s; animation-name: spark-br; }
+        @keyframes spark-tl { 0%{transform:translate(0,0);opacity:0} 10%{opacity:1} 90%{opacity:1} 100%{transform:translate(83px,83px);opacity:0} }
+        @keyframes spark-tr { 0%{transform:translate(0,0);opacity:0} 10%{opacity:1} 90%{opacity:1} 100%{transform:translate(-83px,83px);opacity:0} }
+        @keyframes spark-bl { 0%{transform:translate(0,0);opacity:0} 10%{opacity:1} 90%{opacity:1} 100%{transform:translate(83px,-83px);opacity:0} }
+        @keyframes spark-br { 0%{transform:translate(0,0);opacity:0} 10%{opacity:1} 90%{opacity:1} 100%{transform:translate(-83px,-83px);opacity:0} }
+
+        /* ━━━ 余烬粒子（链条末端爆开）━━━ */
+        .splash-ember {
+            position: fixed;
+            z-index: 100000;
+            pointer-events: none;
+            width: 3px; height: 3px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.7);
+            opacity: 0;
+        }
+        .ember-tl-1 { top: 107px; left: 107px; animation: ember-tl-1 0.4s 1.32s ease-out forwards; }
+        .ember-tl-2 { top: 107px; left: 107px; animation: ember-tl-2 0.4s 1.34s ease-out forwards; }
+        .ember-tr-1 { top: 107px; right: 107px; animation: ember-tr-1 0.4s 1.36s ease-out forwards; }
+        .ember-tr-2 { top: 107px; right: 107px; animation: ember-tr-2 0.4s 1.38s ease-out forwards; }
+        .ember-bl-1 { bottom: 107px; left: 107px; animation: ember-bl-1 0.4s 1.40s ease-out forwards; }
+        .ember-bl-2 { bottom: 107px; left: 107px; animation: ember-bl-2 0.4s 1.42s ease-out forwards; }
+        .ember-br-1 { bottom: 107px; right: 107px; animation: ember-br-1 0.4s 1.44s ease-out forwards; }
+        .ember-br-2 { bottom: 107px; right: 107px; animation: ember-br-2 0.4s 1.46s ease-out forwards; }
+        @keyframes ember-tl-1 { 0%{opacity:1;transform:translate(0,0)} 100%{opacity:0;transform:translate(-13px,-13px)} }
+        @keyframes ember-tl-2 { 0%{opacity:1;transform:translate(0,0)} 100%{opacity:0;transform:translate(10px,-15px)} }
+        @keyframes ember-tr-1 { 0%{opacity:1;transform:translate(0,0)} 100%{opacity:0;transform:translate(13px,-13px)} }
+        @keyframes ember-tr-2 { 0%{opacity:1;transform:translate(0,0)} 100%{opacity:0;transform:translate(-10px,-15px)} }
+        @keyframes ember-bl-1 { 0%{opacity:1;transform:translate(0,0)} 100%{opacity:0;transform:translate(-13px,13px)} }
+        @keyframes ember-bl-2 { 0%{opacity:1;transform:translate(0,0)} 100%{opacity:0;transform:translate(10px,15px)} }
+        @keyframes ember-br-1 { 0%{opacity:1;transform:translate(0,0)} 100%{opacity:0;transform:translate(13px,13px)} }
+        @keyframes ember-br-2 { 0%{opacity:1;transform:translate(0,0)} 100%{opacity:0;transform:translate(-10px,15px)} }
+
+        /* ━━━ 放射符文刻度（12 向，围绕留白中心，不侵入中心区）━━━ */
+        .spoke-wrap {
+            position: fixed; top: 50%; left: 50%;
+            width: 0; height: 0;
+            z-index: 99997;
+            pointer-events: none;
+        }
+        .spoke {
+            position: absolute; left: -0.5px; top: 0;
+            width: 0; height: 0;
+            transform-origin: center bottom;
+            transform: rotate(var(--ang)) translateY(-120px);
+            opacity: 0;
+            animation: spoke-in 0.3s var(--d) ease-out forwards;
+        }
+        .spoke::after {
+            content: var(--rune);
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%) rotate(calc(-1 * var(--ang)));
+            color: rgba(255,255,255,0.45);
+            font-size: 13px;
+            font-family: "Segoe UI Symbol", "Microsoft YaHei", serif;
+            line-height: 1;
+        }
+        @keyframes spoke-in { from { opacity: 0; } to { opacity: 1; } }
+
+        @keyframes dial-in { from { opacity: 0; } to { opacity: 1; } }
+
+        /* ━━━ 中心法阵：八角星框（两个正方形叠加旋转45°）━━━ */
+        .core-star {
+            position: fixed;
+            top: 50%; left: 50%;
+            width: 130px; height: 130px;
+            margin: -65px 0 0 -65px;
+            border: 1px solid rgba(255,255,255,0.22);
+            pointer-events: none;
+            opacity: 0;
+        }
+        .core-star.s1 {
+            animation: core-enter 0.45s 0.70s cubic-bezier(0.2, 0, 0.2, 1) forwards;
+        }
+        .core-star.s2 {
+            transform: rotate(45deg) scale(1);
+            animation: core-enter-45 0.45s 0.76s cubic-bezier(0.2, 0, 0.2, 1) forwards;
+        }
+        @keyframes core-enter { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: scale(1); } }
+        @keyframes core-enter-45 { from { opacity: 0; transform: rotate(45deg) scale(0.6); } to { opacity: 1; transform: rotate(45deg) scale(1); } }
+
+        /* ━━━ 中心内圈虚线 + 刻度 ━━━ */
+        .core-circle {
+            position: fixed;
+            top: 50%; left: 50%;
+            width: 92px; height: 92px;
+            margin: -46px 0 0 -46px;
+            border: 1px dashed rgba(255,255,255,0.28);
+            border-radius: 50%;
+            pointer-events: none;
+            opacity: 0;
+            animation: core-enter 0.4s 0.82s cubic-bezier(0.2, 0, 0.2, 1) forwards,
+            ring-spin 12s 1.22s linear infinite;
+        }
+        .core-dial-wrap {
+            position: fixed; top: 50%; left: 50%;
+            width: 0; height: 0;
+            z-index: 99997;
+            pointer-events: none;
+        }
+        .core-dial-tick {
+            position: absolute; left: -0.5px; top: 0;
+            width: 1px; height: 7px;
+            background: rgba(255,255,255,0.3);
+            transform-origin: center bottom;
+            transform: rotate(var(--ang)) translateY(-58px);
+            opacity: 0;
+            animation: dial-in 0.2s var(--d) ease-out forwards;
+        }
+
+        /* ━━━ 中心十字放射线（十二向，比外圈符文更靠内）━━━ */
+        .core-cross-wrap {
+            position: fixed; top: 50%; left: 50%;
+            width: 0; height: 0;
+            z-index: 99996;
+            pointer-events: none;
+        }
+        .core-cross-line {
+            position: absolute; left: -0.5px; top: 0;
+            width: 1px; height: 20px;
+            background: rgba(255,255,255,0.16);
+            transform-origin: center bottom;
+            transform: rotate(var(--ang)) translateY(-38px);
+            opacity: 0;
+            animation: dial-in 0.25s var(--d) ease-out forwards;
+        }
+
+        /* ━━━ 中心小菱形节点（八角星四个尖角处）━━━ */
+        .core-node {
+            position: fixed;
+            width: 6px; height: 6px;
+            margin: -3px 0 0 -3px;
+            border: 1px solid rgba(255,255,255,0.45);
+            pointer-events: none;
+            opacity: 0;
+            animation: core-node-in 0.25s var(--d) cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        @keyframes core-node-in { from { opacity: 0; transform: rotate(45deg) scale(0); } to { opacity: 1; transform: rotate(45deg) scale(1); } }
+
+        /* ━━━ 多层光环，悬空环绕留白中心 ━━━ */
+        .splash-ring {
+            position: fixed;
+            top: 50%; left: 50%;
+            border-radius: 50%;
+            pointer-events: none;
+            opacity: 0;
+        }
+        .ring-1 {
+            width: 200px; height: 200px; margin: -100px 0 0 -100px;
+            border: 1px dashed rgba(255,255,255,0.20);
+            animation: ring-enter 0.5s 0.55s cubic-bezier(0.2, 0, 0.2, 1) forwards,
+            ring-spin 9s 1.05s linear infinite;
+        }
+        .ring-2 {
+            width: 260px; height: 260px; margin: -130px 0 0 -130px;
+            border: 1px solid rgba(255,255,255,0.12);
+            animation: ring-enter 0.5s 0.60s cubic-bezier(0.2, 0, 0.2, 1) forwards,
+            ring-spin-rev 13s 1.10s linear infinite;
+        }
+        .ring-3 {
+            width: 320px; height: 320px; margin: -160px 0 0 -160px;
+            border: 1px dotted rgba(255,255,255,0.10);
+            animation: ring-enter 0.5s 0.65s cubic-bezier(0.2, 0, 0.2, 1) forwards,
+            ring-spin 18s 1.15s linear infinite;
+        }
+        .ring-4a {
+            width: 396px; height: 396px; margin: -198px 0 0 -198px;
+            border: 1px dashed rgba(255,255,255,0.10);
+            animation: ring-enter 0.5s 1.30s cubic-bezier(0.2, 0, 0.2, 1) forwards,
+            ring-spin-rev 18s 1.80s linear infinite;
+        }
+        .ring-4b {
+            width: 416px; height: 416px; margin: -208px 0 0 -208px;
+            border: 1px dotted rgba(255,255,255,0.07);
+            animation: ring-enter 0.5s 1.33s cubic-bezier(0.2, 0, 0.2, 1) forwards,
+            ring-spin 22s 1.83s linear infinite;
+        }
+        .ring-5a {
+            width: 460px; height: 460px; margin: -230px 0 0 -230px;
+            border: 1px solid rgba(255,255,255,0.06);
+            animation: ring-enter 0.5s 1.36s cubic-bezier(0.2, 0, 0.2, 1) forwards,
+            ring-spin 28s 1.86s linear infinite;
+        }
+        .ring-5b {
+            width: 484px; height: 484px; margin: -242px 0 0 -242px;
+            border: 1px dashed rgba(255,255,255,0.08);
+            animation: ring-enter 0.5s 1.39s cubic-bezier(0.2, 0, 0.2, 1) forwards,
+            ring-spin-rev 24s 1.89s linear infinite;
+        }
+        .ring-5-nodes {
+            position: fixed; top: 50%; left: 50%;
+            width: 0; height: 0;
+            z-index: 99995;
+            pointer-events: none;
+            opacity: 0;
+            animation: ring-enter 0.5s 1.42s cubic-bezier(0.2, 0, 0.2, 1) forwards,
+            ring-spin-rev 24s 1.89s linear infinite;
+        }
+        .ring-5-node {
+            position: absolute;
+            width: 6px; height: 6px;
+            margin: -3px 0 0 -3px;
+            border: 1px solid rgba(255,255,255,0.4);
+            transform: rotate(45deg);
+        }
+        .ring-6 {
+            width: 540px; height: 540px; margin: -270px 0 0 -270px;
+            border: 2px solid rgba(255,255,255,0.08);
+            border-radius: 50%;
+            animation: ring-enter 0.6s 1.45s cubic-bezier(0.2, 0, 0.2, 1) forwards,
+            ring-spin 28s 1.90s linear infinite;
+        }
+        .ring-6::before {
+            content: '';
+            position: absolute;
+            inset: -12px;
+            border: 1px dashed rgba(255,255,255,0.06);
+            border-radius: 50%;
+        }
+        .ring-6::after {
+            content: '';
+            position: absolute;
+            inset: 8px;
+            border: 1px dotted rgba(255,255,255,0.09);
+            border-radius: 50%;
+        }
+        .ring-6-nodes {
+            position: fixed; top: 50%; left: 50%;
+            width: 0; height: 0;
+            z-index: 99995;
+            pointer-events: none;
+            opacity: 0;
+            animation: ring-enter 0.5s 1.48s cubic-bezier(0.2, 0, 0.2, 1) forwards,
+            ring-spin-rev 22s 1.93s linear infinite;
+        }
+        .ring-6-node {
+            position: absolute;
+            width: 8px; height: 8px;
+            margin: -4px 0 0 -4px;
+            border: 1.5px solid rgba(255,255,255,0.5);
+            transform: rotate(45deg);
+            box-shadow: 0 0 4px rgba(255,255,255,0.15);
+        }
+        @keyframes ring-enter { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
+        @keyframes ring-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes ring-spin-rev { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+
+        /* ━━━ Logo（留白中心的唯一内容）━━━ */
+        #rhizome-splash .splash-logo-wrap {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 100001;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            opacity: 0;
+            animation: logo-in 0.4s cubic-bezier(0.2, 0, 0.2, 1) 1.20s forwards;
+        }
+        @keyframes logo-in {
+            from { opacity: 0; transform: translate(-50%, -50%) translateY(6px); }
+            to   { opacity: 1; transform: translate(-50%, -50%) translateY(0); }
+        }
+        #rhizome-splash .splash-logo {
+            font-size: 38px; font-weight: 700;
+            font-family: "Microsoft YaHei", sans-serif;
+            color: #ffffff;
+            letter-spacing: 8px;
+        }
+        #rhizome-splash .splash-sub {
+            margin-top: 8px;
+            font-size: 11px;
+            color: rgba(255,255,255,0.25);
+            font-family: "Microsoft YaHei", sans-serif;
+            letter-spacing: 2px;
+        }
+
+        /* ━━━ 倒放（退场）━━━
+           与 SplashOverlay.vue 保持参数一致 */
+        #rhizome-splash.reversing .splash-spark,
+        #rhizome-splash.reversing .splash-bracket,
+        #rhizome-splash.reversing .splash-ember,
+        #rhizome-splash.reversing .spoke,
+        #rhizome-splash.reversing .spoke::after,
+        #rhizome-splash.reversing .core-star,
+        #rhizome-splash.reversing .core-circle,
+        #rhizome-splash.reversing .core-dial-tick,
+        #rhizome-splash.reversing .core-cross-line,
+        #rhizome-splash.reversing .core-node {
+            animation: elem-fade 0.2s ease forwards !important;
+        }
+        #rhizome-splash.reversing .splash-chain {
+            animation: chain-shrink 0.3s var(--delay) cubic-bezier(0.55, 0, 1, 0.45) forwards !important;
+        }
+        #rhizome-splash.reversing .splash-chain2 {
+            animation: chain2-shrink 0.25s cubic-bezier(0.55, 0, 1, 0.45) forwards !important;
+        }
+        #rhizome-splash.reversing .splash-ring,
+        #rhizome-splash.reversing .ring-5-nodes,
+        #rhizome-splash.reversing .ring-6-nodes {
+            animation: ring-shrink 0.35s var(--shrink-delay, 0s) cubic-bezier(0.55, 0, 1, 0.45) forwards !important;
+        }
+        #rhizome-splash.reversing .ring-6,
+        #rhizome-splash.reversing .ring-6-nodes { --shrink-delay: 0.00s; }
+        #rhizome-splash.reversing .ring-5a,
+        #rhizome-splash.reversing .ring-5b,
+        #rhizome-splash.reversing .ring-5-nodes { --shrink-delay: 0.04s; }
+        #rhizome-splash.reversing .ring-4a,
+        #rhizome-splash.reversing .ring-4b { --shrink-delay: 0.08s; }
+        #rhizome-splash.reversing .ring-3 { --shrink-delay: 0.12s; }
+        #rhizome-splash.reversing .ring-2 { --shrink-delay: 0.15s; }
+        #rhizome-splash.reversing .ring-1 { --shrink-delay: 0.18s; }
+        #rhizome-splash.reversing .core-circle { --shrink-delay: 0.20s; }
+        #rhizome-splash.reversing .splash-logo-wrap {
+            animation: logo-up-out 0.3s 0.05s cubic-bezier(0.55, 0, 1, 0.45) forwards !important;
+        }
+        @keyframes chain-shrink { from { width: 118px; opacity: 1; } to { width: 0; opacity: 0; } }
+        @keyframes chain2-shrink { from { opacity: 1; } to { opacity: 0; } }
+        @keyframes ring-shrink { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.3); } }
+        @keyframes elem-fade { from { opacity: 1; } to { opacity: 0; } }
+        @keyframes logo-up-out {
+            from { opacity: 1; transform: translate(-50%, -50%) translateY(0); }
+            to   { opacity: 0; transform: translate(-50%, -50%) translateY(-14px); }
+        }
     </style>
-  </head>
-  <body>
-    <div id="rhizome-splash">
-      <div class="splash-pulse"></div>
-      <div class="splash-corner corner-tl"></div>
-      <div class="splash-corner corner-tr"></div>
-      <div class="splash-corner corner-bl"></div>
-      <div class="splash-corner corner-br"></div>
-      <div class="splash-logo-wrap">
-        <div class="splash-glow"></div>
+</head>
+<body>
+<div id="rhizome-splash">
+    <!-- 四角边框 -->
+    <div class="splash-bracket bracket-tl"></div>
+    <div class="splash-bracket bracket-tr"></div>
+    <div class="splash-bracket bracket-bl"></div>
+    <div class="splash-bracket bracket-br"></div>
+
+    <!-- 对角锁链 -->
+    <div class="splash-chain chain-tl"></div>
+    <div class="splash-chain chain-tr"></div>
+    <div class="splash-chain chain-bl"></div>
+    <div class="splash-chain chain-br"></div>
+
+    <!-- 边中点锁链 -->
+    <div class="splash-chain2 chain2-top"></div>
+    <div class="splash-chain2 chain2-bottom"></div>
+    <div class="splash-chain2 chain2-left"></div>
+    <div class="splash-chain2 chain2-right"></div>
+
+    <!-- 锁链流光 -->
+    <div class="splash-spark spark-tl"></div>
+    <div class="splash-spark spark-tr"></div>
+    <div class="splash-spark spark-bl"></div>
+    <div class="splash-spark spark-br"></div>
+
+    <!-- 余烬粒子 -->
+    <div class="splash-ember ember-tl-1"></div>
+    <div class="splash-ember ember-tl-2"></div>
+    <div class="splash-ember ember-tr-1"></div>
+    <div class="splash-ember ember-tr-2"></div>
+    <div class="splash-ember ember-bl-1"></div>
+    <div class="splash-ember ember-bl-2"></div>
+    <div class="splash-ember ember-br-1"></div>
+    <div class="splash-ember ember-br-2"></div>
+
+    <!-- 放射符文刻度（12 向） -->
+    <div class="spoke-wrap">
+        <div class="spoke" style="--ang:0deg;   --d:1.02s; --rune:'ᛏ'"></div>
+        <div class="spoke" style="--ang:30deg;  --d:1.04s; --rune:'◈'"></div>
+        <div class="spoke" style="--ang:60deg;  --d:1.06s; --rune:'ᛚ'"></div>
+        <div class="spoke" style="--ang:90deg;  --d:1.08s; --rune:'◇'"></div>
+        <div class="spoke" style="--ang:120deg; --d:1.10s; --rune:'ᛞ'"></div>
+        <div class="spoke" style="--ang:150deg; --d:1.12s; --rune:'◆'"></div>
+        <div class="spoke" style="--ang:180deg; --d:1.14s; --rune:'ᛟ'"></div>
+        <div class="spoke" style="--ang:210deg; --d:1.16s; --rune:'◊'"></div>
+        <div class="spoke" style="--ang:240deg; --d:1.18s; --rune:'ᛗ'"></div>
+        <div class="spoke" style="--ang:270deg; --d:1.20s; --rune:'⬥'"></div>
+        <div class="spoke" style="--ang:300deg; --d:1.22s; --rune:'ᚹ'"></div>
+        <div class="spoke" style="--ang:330deg; --d:1.24s; --rune:'⬩'"></div>
+    </div>
+
+    <!-- 中心法阵：八角星框 -->
+    <div class="core-star s1"></div>
+    <div class="core-star s2"></div>
+
+    <!-- 中心内圈虚线 -->
+    <div class="core-circle"></div>
+    <div class="core-dial-wrap">
+        <div class="core-dial-tick" style="--ang:0deg;   --d:0.90s"></div>
+        <div class="core-dial-tick" style="--ang:30deg;  --d:0.91s"></div>
+        <div class="core-dial-tick" style="--ang:60deg;  --d:0.92s"></div>
+        <div class="core-dial-tick" style="--ang:90deg;  --d:0.93s"></div>
+        <div class="core-dial-tick" style="--ang:120deg; --d:0.94s"></div>
+        <div class="core-dial-tick" style="--ang:150deg; --d:0.95s"></div>
+        <div class="core-dial-tick" style="--ang:180deg; --d:0.96s"></div>
+        <div class="core-dial-tick" style="--ang:210deg; --d:0.97s"></div>
+        <div class="core-dial-tick" style="--ang:240deg; --d:0.98s"></div>
+        <div class="core-dial-tick" style="--ang:270deg; --d:0.99s"></div>
+        <div class="core-dial-tick" style="--ang:300deg; --d:1.00s"></div>
+        <div class="core-dial-tick" style="--ang:330deg; --d:1.01s"></div>
+    </div>
+
+    <!-- 中心十字放射线（八向） -->
+    <div class="core-cross-wrap">
+        <div class="core-cross-line" style="--ang:0deg;   --d:0.86s"></div>
+        <div class="core-cross-line" style="--ang:45deg;  --d:0.87s"></div>
+        <div class="core-cross-line" style="--ang:90deg;  --d:0.88s"></div>
+        <div class="core-cross-line" style="--ang:135deg; --d:0.89s"></div>
+        <div class="core-cross-line" style="--ang:180deg; --d:0.90s"></div>
+        <div class="core-cross-line" style="--ang:225deg; --d:0.91s"></div>
+        <div class="core-cross-line" style="--ang:270deg; --d:0.92s"></div>
+        <div class="core-cross-line" style="--ang:315deg; --d:0.93s"></div>
+    </div>
+
+    <!-- 八角星尖角处的菱形节点 -->
+    <div class="core-node" style="top: calc(50% - 90px); left: 50%;                --d: 1.02s"></div>
+    <div class="core-node" style="top: calc(50% - 64px); left: calc(50% + 64px);   --d: 1.03s"></div>
+    <div class="core-node" style="top: 50%;               left: calc(50% + 90px);  --d: 1.04s"></div>
+    <div class="core-node" style="top: calc(50% + 64px); left: calc(50% + 64px);   --d: 1.05s"></div>
+    <div class="core-node" style="top: calc(50% + 90px); left: 50%;                --d: 1.06s"></div>
+    <div class="core-node" style="top: calc(50% + 64px); left: calc(50% - 64px);   --d: 1.07s"></div>
+    <div class="core-node" style="top: 50%;               left: calc(50% - 90px);  --d: 1.08s"></div>
+    <div class="core-node" style="top: calc(50% - 64px); left: calc(50% - 64px);   --d: 1.09s"></div>
+
+    <!-- 多层光环，环绕留白中心 -->
+    <div class="splash-ring ring-1"></div>
+    <div class="splash-ring ring-2"></div>
+    <div class="splash-ring ring-3"></div>
+    <div class="splash-ring ring-4a"></div>
+    <div class="splash-ring ring-4b"></div>
+    <div class="splash-ring ring-5a"></div>
+    <div class="splash-ring ring-5b"></div>
+    <div class="ring-5-nodes">
+        <div class="ring-5-node" style="top: -242px; left: 0;"></div>
+        <div class="ring-5-node" style="top: 0; left: 242px;"></div>
+        <div class="ring-5-node" style="top: 242px; left: 0;"></div>
+        <div class="ring-5-node" style="top: 0; left: -242px;"></div>
+    </div>
+    <div class="splash-ring ring-6"></div>
+    <div class="ring-6-nodes">
+        <div class="ring-6-node" style="top: -270px; left: 0;"></div>
+        <div class="ring-6-node" style="top: -191px; left: 191px;"></div>
+        <div class="ring-6-node" style="top: 0; left: 270px;"></div>
+        <div class="ring-6-node" style="top: 191px; left: 191px;"></div>
+        <div class="ring-6-node" style="top: 270px; left: 0;"></div>
+        <div class="ring-6-node" style="top: 191px; left: -191px;"></div>
+        <div class="ring-6-node" style="top: 0; left: -270px;"></div>
+        <div class="ring-6-node" style="top: -191px; left: -191px;"></div>
+    </div>
+
+    <!-- Logo：留白中心的唯一内容 -->
+    <div class="splash-logo-wrap">
         <div class="splash-logo">Rhizome</div>
         <div class="splash-sub">简约的本地音乐播放器</div>
-      </div>
     </div>
-    <div id="app"></div>
-    <script type="module" src="/src/main.js"></script>
-  </body>
+</div>
+<div id="app"></div>
+<script type="module" src="/src/main.js"></script>
+</body>
 </html>

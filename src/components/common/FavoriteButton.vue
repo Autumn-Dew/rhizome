@@ -43,7 +43,7 @@ const toggle = () => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: var(--motion-control-hover);
   flex-shrink: 0;
 }
 .fav-btn svg {
