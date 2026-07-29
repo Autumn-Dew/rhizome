@@ -1,8 +1,8 @@
 <template>
-  <SplashOverlay :visible="showScreensaver" :theme-class="themeClass" @dismiss="dismissScreensaver" />
+  <SplashOverlay :visible="showScreensaver || demoSplashVisible" :theme-class="themeClass" @dismiss="onSplashDismiss" />
   <div class="rc-main-container" :class="[themeClass]">
-    <div class="rc-title-bar">
-      <h2>Rhizome · 音乐播放器</h2>
+    <div class="rc-title-bar" :class="{ 'demo-active-bar': demoActive }">
+      <h2>{{ demoActive ? 'Rhizome · 演示模式' : 'Rhizome · 音乐播放器' }}</h2>
       <div class="rc-window-controls">
         <button class="rc-window-btn rc-btn-minimize" @click="minimize">─</button>
         <button class="rc-window-btn rc-btn-maximize" @click="maximize">{{ isMaximized ? '❐' : '□' }}</button>
@@ -56,6 +56,15 @@
         @select="onPlaylistSelect"
     />
   </div>
+
+  <!-- 演示模式 -->
+  <DemoOverlay
+    :active="demoActive"
+    :masked="demoMasked"
+    :caption="demoCaption"
+    :caption-visible="demoCaptionVisible"
+    :trigger-count="demoTriggerCount"
+  />
 </template>
 
 <script setup>
@@ -67,22 +76,35 @@ import {useLocalMusicStore} from '@/stores/localMusicStore'
 import {useShortcuts} from '@/composables/useShortcuts'
 import {useActionChain} from '@/composables/useActionChain'
 import {useLyricOffset} from '@/composables/useLyricOffset'
+import {useDemoMode, useDemoTrigger} from '@/composables/useDemoMode'
 import { resolveLyrics } from '@/utils/lyrics'
 import { K_VOLUME, K_LYRIC_SIZE, K_LYRIC_ALIGN, K_DESKTOP_LYRICS_VIS, K_DESKTOP_LYRICS_LCK, K_PLAYER_STATE, K_DESKTOP_LYRICS_BG } from '@/constants/storage-keys'
 
 import GlobalPlayer from '@/components/player/GlobalPlayer.vue'
 import SelectModal from '@/components/common/SelectModal.vue'
+import DemoOverlay from '@/components/demo/DemoOverlay.vue'
 import SplashOverlay from '@/components/splash/SplashOverlay.vue'
 import { useIdle } from '@/composables/useIdle'
 import { idleTimeoutSec } from '@/composables/useIdleTimeout'
 
 const router = useRouter()
 const route = useRoute()
-const { themeClass } = useGlobalTheme()
+const { themeClass, toggleTheme, isDark } = useGlobalTheme()
 const playerStore = usePlayerStore()
 const { offsetSeconds } = useLyricOffset()
 const openPlaylist = ref(false)
 const isMaximized = ref(false)
+
+// ========== 演示模式 ==========
+const demo = useDemoMode()
+const demoActive = computed(() => demo.active.value)
+const demoCaption = computed(() => demo.caption.value)
+const demoCaptionVisible = computed(() => demo.captionVisible.value)
+const demoSplashVisible = computed(() => demo.splashVisible.value)
+const demoMasked = computed(() => demo.masked.value)
+const demoTriggerCount = computed(() => demo.triggerCount.value)
+
+useDemoTrigger(() => demo.start())
 
 // ========== 屏保 ==========
 const showScreensaver = ref(false)
@@ -97,9 +119,42 @@ function dismissScreensaver() {
   resetIdle()
 }
 
+// 统一 Splash dismiss 处理（屏保 or Demo 开场/结束）
+function onSplashDismiss() {
+  if (showScreensaver.value) {
+    dismissScreensaver()
+  }
+  // Demo splash 由 useDemoMode 内部定时器控制 visible，这里不需要额外处理
+}
+
 // ========== 桌面歌词状态 ==========
 const desktopLyricsVisible = ref(localStorage.getItem(K_DESKTOP_LYRICS_VIS) === 'true')
 const desktopLyricsLocked = ref(false)  // 初始值，onMounted 中异步校正
+
+// 演示依赖（须在 desktopLyricsVisible 定义之后）
+demo.configure({
+  router,
+  player: playerStore,
+  toggleTheme,
+  showLyrics: () => {
+    if (desktopLyricsVisible.value) return
+    desktopLyricsVisible.value = true
+    localStorage.setItem(K_DESKTOP_LYRICS_VIS, 'true')
+    window.electron?.showDesktopLyrics?.()
+  },
+  hideLyrics: () => {
+    if (!desktopLyricsVisible.value) return
+    desktopLyricsVisible.value = false
+    localStorage.setItem(K_DESKTOP_LYRICS_VIS, 'false')
+    window.electron?.hideDesktopLyrics?.()
+    stopSyncTimer()
+  },
+  lockLyrics: locked => {
+    desktopLyricsLocked.value = locked
+    localStorage.setItem(K_DESKTOP_LYRICS_LCK, locked.toString())
+    window.electron?.setDesktopLyricsLock?.(locked)
+  },
+})
 
 const volume = ref(1.0)
 
@@ -204,7 +259,7 @@ function sendLyricsTiming(forcePaused) {
 
   const fontSize = Number(localStorage.getItem(K_LYRIC_SIZE) || 14)
   const align = localStorage.getItem(K_LYRIC_ALIGN) || 'center'
-  const bgOpacity = Number(localStorage.getItem(K_DESKTOP_LYRICS_BG) || 18) / 100
+  const bgOpacity = Number(localStorage.getItem(K_DESKTOP_LYRICS_BG) || 100) / 100
   const data = {
     text: info.text,
     lineStartTime: info.start,
@@ -538,5 +593,92 @@ const goToSongDetail = () => {
 
 .page-scroller::-webkit-scrollbar {
   display: none;
+}
+
+/* ════════════════════════ Demo Overlay ════════════════════════ */
+.demo-overlay {
+  position: fixed; inset: 0; z-index: 99980;
+  pointer-events: none;
+}
+
+/* ── 暗角遮罩 ── */
+.demo-vignette {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.18) 100%);
+  animation: vignette-in 0.6s var(--motion-easing-standard);
+  transition: background 0.5s var(--motion-easing-standard);
+}
+/* outro 蒙版：深色半透明，遮挡后方内容 */
+.demo-outro-vignette {
+  background: rgba(0,0,0,0.55);
+}
+@keyframes vignette-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* 标题栏 demo 标识 */
+.rc-title-bar.demo-active-bar {
+  background: color-mix(in srgb, var(--border-color) 8%, var(--bg-primary));
+  transition: background 0.4s var(--motion-easing-standard);
+}
+.rc-title-bar.demo-active-bar h2 {
+  letter-spacing: 1px;
+}
+
+/* ── 字幕 ── */
+.demo-caption-box {
+  position: absolute; top: 46%; left: 50%; transform: translate(-50%, -50%);
+  text-align: center; pointer-events: none;
+  will-change: transform, opacity, filter;
+}
+
+.demo-caption-main {
+  font-size: 52px; font-weight: 700; letter-spacing: 7px;
+  color: var(--text-primary);
+  text-shadow:
+    0 0 60px var(--c40, rgba(255,255,255,0.12)),
+    0 0 120px var(--c20, rgba(255,255,255,0.05));
+}
+
+.demo-caption-sub {
+  margin-top: 14px; font-size: 22px; opacity: 0.55; letter-spacing: 4px;
+  color: var(--text-primary);
+}
+
+/* 字幕过渡：缩放 + 模糊 + 淡入 */
+.demo-cap-enter-active {
+  transition: opacity 0.4s var(--motion-easing-standard),
+              transform 0.45s var(--motion-easing-enter),
+              filter 0.4s var(--motion-easing-standard);
+}
+.demo-cap-leave-active {
+  transition: opacity 0.35s var(--motion-easing-standard),
+              transform 0.3s var(--motion-easing-leave),
+              filter 0.3s var(--motion-easing-standard);
+}
+.demo-cap-enter-from {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.92);
+  filter: blur(6px);
+}
+.demo-cap-leave-to {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(1.04);
+  filter: blur(3px);
+}
+
+/* ── 5连击提示 ── */
+.demo-click-hint {
+  position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%);
+  font-size: 13px; letter-spacing: 2px; color: var(--text-primary);
+  opacity: 0.6; padding: 6px 16px;
+  border: 1px solid var(--c25, var(--border-color));
+  background: var(--bg-secondary);
+  animation: hint-pop 0.3s var(--motion-easing-spring);
+}
+@keyframes hint-pop {
+  from { opacity: 0; transform: translateX(-50%) translateY(6px) scale(0.95); }
+  to   { opacity: 0.6; transform: translateX(-50%) translateY(0) scale(1); }
 }
 </style>

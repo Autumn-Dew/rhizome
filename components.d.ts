@@ -12,6 +12,7 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     AboutModal: typeof import('./src/components/common/AboutModal.vue')['default']
+    DemoOverlay: typeof import('./src/components/demo/DemoOverlay.vue')['default']
     DesktopLyrics: typeof import('./src/components/lyrics/DesktopLyrics.vue')['default']
     FavoriteButton: typeof import('./src/components/common/FavoriteButton.vue')['default']
     GlobalPlayer: typeof import('./src/components/player/GlobalPlayer.vue')['default']

@@ -56,7 +56,7 @@ function createWindow() {
         win.loadURL('http://localhost:9000')
     }
 
-    win.webContents.openDevTools()
+    // win.webContents.openDevTools()
     win.removeMenu()
 
     win.on('close', (e) => {
@@ -146,7 +146,7 @@ function createLyricWindow() {
     } catch {}
 
     const x = savedPos?.x ?? Math.round((sw - 800) / 2)
-    const y = savedPos?.y ?? Math.round(sh * 0.85)
+    const y = savedPos?.y ?? 45
 
     lyricWindow = new BrowserWindow({
         width: 800,
