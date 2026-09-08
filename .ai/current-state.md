@@ -1,14 +1,14 @@
 # Rhizome Current State
 
 - 更新时间：2026-09-08
-- 当前 Phase：0（工程底座）
-- 当前 Task：T-F03（文档体系）——完成后 Phase 0 收尾
-- 已完成：master-plan 落盘(4d07933)；vitest 底座+82测试(346b1f6)；parseLRC 迁出(5478dee)；文档体系(本次)
+- 当前 Phase：0（工程底座）——代码与文档工作完成，待用户手工冒烟后关闭
+- 当前 Task：无进行中；下一步 = 用户按 docs/smoke-checklist.md 手工冒烟 → Phase 1 T-F04
+- 已完成：master-plan 落盘(4d07933)；vitest 底座+82测试(346b1f6)；parseLRC 迁出(5478dee)；文档体系(906b0b6)；master-plan 事实修正(follow-up commit)
 - 测试状态：npm test 全绿（81 passed + 1 todo）
-- Build 状态：vite build PASS；electron-builder 未验证（Phase 0 收尾需跑一次 npm run build）
+- Build 状态：vite build PASS；electron-builder PASS（Rhizome Setup 1.0.8.exe 已生成）
 - 已知问题：见 master-plan §2 与本文档"未解决风险"
 - 未解决风险：RHZ-K1（两 storage key 不在备份范围，待裁决）；webSecurity:false（Phase 5）
-- 下一 Task：Phase 0 收尾（npm run build 验证 + 手工冒烟）→ Phase 1 T-F04（死代码清理）
+- 下一 Task：Phase 1 T-F04（死通道/死 API/死依赖/死文件清理；清单含新确认的孤儿通道 get-user-music-dir）
 - 禁止事项：Phase 1 前不得动 preload 业务/webSecurity/playerStore 内部/巨型组件
 
 ## 文档体系（本次 T-F03 产出）
