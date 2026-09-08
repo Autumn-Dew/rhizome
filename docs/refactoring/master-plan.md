@@ -83,7 +83,7 @@ Vue Component → composable/store → services/ → preload API → IPC(常量)
 | 项 | 内容 |
 |---|---|
 | 目标 | 让后续一切重构有行为锚点与事实文档；不改任何运行时行为 |
-| 修改范围 | 新增：`vitest` + `happy-dom` 配置；`electron/lib/lrc.cjs`（从 preload.js:53-77 **原样搬移** `parseLRC`，preload 改为 require）；`docs/`（project-overview / architecture / electron / ipc / testing）；重写 `AGENTS.md`；`.ai/current-state.md`；落盘本计划；ADR-001（轻量分层、无后端）；`docs/smoke-checklist.md`（手工冒烟清单：播放/暂停/上下曲/四种模式/进度/音量/托盘/桌面歌词/备份恢复/设置页） |
+| 修改范围 | 新增：`vitest` + `happy-dom` 配置；`electron/lib/lrc.cjs`（从 preload.js:53-77 **原样搬移** `parseLRC`，preload 改为 require）；`docs/`（project-overview / architecture / electron / ipc / testing）；重写 `AGENTS.md`；`.ai/current-state.md`；落盘本计划；ADR-001（轻量分层、无后端）；`docs/smoke-checklist.md`（手工冒烟清单：播放/暂停/上下曲/五种模式/进度/音量/托盘/桌面歌词/备份恢复/设置页） |
 | 风险 | 极低。唯一运行时接触点是 `parseLRC` 搬移——逐字节搬移 + 下方测试锚定 |
 | 前置条件 | 本计划获确认 |
 | 测试要求 | 第一批纯函数测试：`parseLRC`（offset 标签、2/3 位毫秒、ti/ar/al 元数据行跳过、排序）、`resolveLyrics`（synced 优先、原始行回退 999999、同时间戳合并）、`createSongFromMeta`（字段映射全表）、`formatTime`、storage-keys 一致性（`ALL_STORAGE_KEYS` 无重复、命名规范） |
@@ -95,7 +95,7 @@ Vue Component → composable/store → services/ → preload API → IPC(常量)
 | 项 | 内容 |
 |---|---|
 | 目标 | 删除死物、修复确证 bug，降低全库认知负担；行为不变 |
-| 修改范围 | ① 删 8 个死 IPC 通道/死 API：`find-sidecar-cover`(main.js:553, preload.js:270)、`getAudioCover`(520)、`media-update`(561)、`media-play/pause/prev/next` 四个 handle(577-588)、`global-player-stop` 发送(65)、`app-quit` handle(485)、preload 的 `readLocalLrc`/`getFileMtime`(259/267)。**逐项先 grep 确认零引用再删**。② 修复 `update-global-shortcuts` 双注册 + 重复守卫（main.js:622-627）。③ 托盘点击补 `win?.` 防护（main.js:83）。④ 删依赖 `dayjs`、`flac-metadata`、`jsmediatags`、`music-metadata-browser`（均已实测零引用）。⑤ 删根目录死文件 `mock-diary-data.js`。⑥ 消除硬编码 storage key（`SongDetail.vue:214` 的 `'playCountReal'` → `K_PLAY_COUNT_REAL`，另全库 grep `localStorage.getItem/setItem` 找出全部逃逸点）。⑦ `localMusicStore.initFromStorage:47-67` 改用 `createSongFromMeta`——**先补字段对比测试**，已知差异：手写版 `durationFormat` 回退 `'00:00'`，工厂版回退 `formatTime(duration)`，属可接受的微改进，需在 commit message 声明 |
+| 修改范围 | ① 删 8 个死 IPC 通道/死 API：`find-sidecar-cover`(main.js:553, preload.js:270)、`getAudioCover`(520)、`media-update`(561)、`media-play/pause/prev/next` 四个 handle(577-588)、`global-player-stop` 发送(65)、`app-quit` handle(485)、preload 的 `readLocalLrc`/`getFileMtime`(259/267)，以及 v1.1 实测新发现的孤儿通道 `get-user-music-dir`(main.js:277，已注册但 preload 未暴露、无调用方)。**逐项先 grep 确认零引用再删**。② 修复 `update-global-shortcuts` 双注册 + 重复守卫（main.js:622-627）。③ 托盘点击补 `win?.` 防护（main.js:83）。④ 删依赖 `dayjs`、`flac-metadata`、`jsmediatags`、`music-metadata-browser`（均已实测零引用）。⑤ 删根目录死文件 `mock-diary-data.js`。⑥ 消除硬编码 storage key（`SongDetail.vue:214` 的 `'playCountReal'` → `K_PLAY_COUNT_REAL`，另全库 grep `localStorage.getItem/setItem` 找出全部逃逸点）。⑦ `localMusicStore.initFromStorage:47-67` 改用 `createSongFromMeta`——**先补字段对比测试**，已知差异：手写版 `durationFormat` 回退 `'00:00'`，工厂版回退 `formatTime(duration)`，属可接受的微改进，需在 commit message 声明 |
 | 风险 | 低。唯一非严格零行为项是 ⑦ 的 durationFormat 回退改进 |
 | 前置条件 | Phase 0 |
 | 测试要求 | ⑦ 的映射对比测试先行；完成后全量 vitest + build + 冒烟清单 |
@@ -237,7 +237,7 @@ P7(PlaylistDetail/SettingsPage/MusicTimeline/LocalMusic) 仅依赖 P3，可与 P
 | song 对象映射 | factory 单测 + store 映射对比 | P0/P1 | 字段全表等价（durationFormat 回退差异显式声明） |
 | storage key 注册表完整性 | 一致性测试 + 硬编码 grep 守卫 | P0/P2 | 无重复、无逃逸 |
 | shuffle（首曲防重/全覆盖/prev 回退语义） | `domain/shuffle` 或 store 级测试（stub Audio + fake timers） | P1 补，P6 随迁 | 按现行为**原样**断言，包括"非标准"的 prev 语义 |
-| next/prev/四模式轮转/single 不自进/singleLoop 重播 | store 行为测试 | P1/P6 | 同上 |
+| next/prev/五模式轮转（list/listLoop/singleLoop/single/random，v1.1 实测修正：原写四模式漏 listLoop）/single 不自进/singleLoop 重播 | store 行为测试 | P1/P6 | 同上 |
 | 30 秒阈值计历史、同曲去重、30 条窗口/全量 1 万上限 | store 测试（fake timers） | P1 | 同上 |
 | playerState 保存字段与 15s 定时/暂停即存 | store 测试 | P6 | 同上 |
 | gateway 无 Electron 环境不抛错 | service 单测 | P3 | happy-dom 下 null 安全 |
