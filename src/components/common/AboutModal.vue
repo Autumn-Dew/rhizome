@@ -44,7 +44,7 @@ import { useGlobalTheme } from '@/composables/useGlobalTheme'
 
 defineEmits(['close'])
 const { themeClass } = useGlobalTheme()
-const version = '1.0.8'
+const version = '1.0.82'
 </script>
 
 <style scoped>

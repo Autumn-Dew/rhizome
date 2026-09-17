@@ -86,12 +86,17 @@ import DemoOverlay from '@/components/demo/DemoOverlay.vue'
 import SplashOverlay from '@/components/splash/SplashOverlay.vue'
 import { useIdle } from '@/composables/useIdle'
 import { idleTimeoutSec } from '@/composables/useIdleTimeout'
+import { playShortcutSound } from '@/composables/useSound'
+import { useAudioDevice } from '@/composables/useAudioDevice'
 
 const router = useRouter()
 const route = useRoute()
 const { themeClass, toggleTheme, isDark } = useGlobalTheme()
 const playerStore = usePlayerStore()
 const { offsetSeconds } = useLyricOffset()
+const audioDevice = useAudioDevice()
+// 音频设备热插拔：接入新设备自动切换，当前设备断开回退系统默认
+const onDeviceChange = () => audioDevice.syncDeviceChange(() => playerStore.audio)
 const openPlaylist = ref(false)
 const isMaximized = ref(false)
 
@@ -369,39 +374,9 @@ onMounted(() => {
     playerStore.setAudioVolume(volume.value)
   }
 
-  // 音频设备变更：新设备自动切换，当前设备断开暂停，其他设备断开忽略
-  let knownAudioDevices = new Set()
-  const refreshAudioDevices = async () => {
-    try {
-      const devices = await navigator.mediaDevices.enumerateDevices()
-      const audioOut = devices.filter(d => d.kind === 'audiooutput' && d.deviceId)
-      const currentIds = new Set(audioOut.map(d => d.deviceId))
-      // 检测新增设备 → 切换
-      for (const id of currentIds) {
-        if (!knownAudioDevices.has(id) && knownAudioDevices.size > 0) {
-          const audio = playerStore.audio
-          if (audio?.setSinkId) {
-            audio.setSinkId(id).catch(() => {})
-          }
-        }
-      }
-      // 检测设备断开 → 若为当前使用设备则暂停
-      if (knownAudioDevices.size > 0) {
-        for (const id of knownAudioDevices) {
-          if (!currentIds.has(id)) {
-            const audio = playerStore.audio
-            const curSink = audio?.sinkId || ''
-            if (curSink === id || (!curSink && id === [...knownAudioDevices][0])) {
-              if (playerStore.isPlaying) playerStore.togglePlay()
-            }
-          }
-        }
-      }
-      knownAudioDevices = currentIds
-    } catch {}
-  }
-  navigator.mediaDevices?.addEventListener?.('devicechange', refreshAudioDevices)
-  refreshAudioDevices()
+  // 音频设备热插拔：接入新设备自动切换，当前设备断开回退系统默认
+  navigator.mediaDevices?.addEventListener?.('devicechange', onDeviceChange)
+  audioDevice.syncDeviceChange(() => playerStore.audio)
 
   // 拖拽文件/文件夹导入
 
@@ -489,12 +464,13 @@ const { execute: acExec, chains: acList } = useActionChain()
 if (window.electron?.onActionChainExecute) {
   window.electron.onActionChainExecute((index) => {
     const chain = acList.value[index]
-    if (chain) acExec(chain)
+    if (chain) { playShortcutSound(); acExec(chain) }
   })
 }
 
 onUnmounted(() => {
   stopSyncTimer()
+  navigator.mediaDevices?.removeEventListener?.('devicechange', onDeviceChange)
 })
 
 watch(volume, (val) => {

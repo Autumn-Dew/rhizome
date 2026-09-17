@@ -34,7 +34,7 @@
           <div class="diary-card-songs">
             <div class="diary-song" v-for="(song, si) in entry.songs" :key="si" @dblclick="playSong(song)">
               <div class="diary-song-cover">
-                <img v-if="song.coverUrl" :src="song.coverUrl" />
+                <img v-if="song.coverUrl" :src="song.coverUrl" loading="lazy" decoding="async" />
                 <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke-width="2"/></svg>
               </div>
               <div class="diary-song-info">

@@ -1,34 +1,29 @@
 /**
- * useSongList — 歌曲列表排序 / 多选 / 拖拽 通用逻辑
+ * useSongList — 歌曲列表排序（序号）/ 多选 通用逻辑
  *
  * 消除 LocalMusic.vue 和 PlaylistDetail.vue 中的重复代码。
+ * 排序仅支持手动输入序号（不拖拽）。
  *
  * @param {Ref<Array>} listRef     - 歌曲列表 ref（会被直接修改）
  * @param {Function}   onPersist   - 变更后持久化回调
- * @returns 所有排序/多选/拖拽相关的状态和方法
+ * @returns 排序/多选相关的状态和方法
  */
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 
 export function useSongList(listRef, onPersist) {
-  // ── 排序模式 ──
+  // ── 排序模式（序号） ──
   const sortMode = ref(false)
-  const dragFromIdx = ref(-1)
-  const dragOverIdx = ref(-1)
   const sortOrderMap = ref({})
 
   function toggleSortMode() {
     if (sortMode.value) {
       applySortOrder()
       sortMode.value = false
-      dragFromIdx.value = -1
-      dragOverIdx.value = -1
       sortOrderMap.value = {}
     } else {
       sortMode.value = true
       multiMode.value = false
       selectedSet.value.clear()
-      dragFromIdx.value = -1
-      dragOverIdx.value = -1
       sortOrderMap.value = {}
     }
   }
@@ -74,37 +69,13 @@ export function useSongList(listRef, onPersist) {
     onPersist?.()
   }
 
-  const bounceIdx = ref(-1)
-
-  // ── 拖拽 ──
-  function onDragStart(idx, e) {
-    dragFromIdx.value = idx
-    e.dataTransfer.effectAllowed = 'move'
-    e.dataTransfer.setData('text/plain', String(idx))
-  }
-  function onDragOver(idx) { if (dragFromIdx.value !== -1) dragOverIdx.value = idx }
-  function onDragLeave() {}
-  function onDrop(idx) {
-    if (dragFromIdx.value === -1 || dragFromIdx.value === idx) { dragFromIdx.value = -1; dragOverIdx.value = -1; return }
-    const list = [...listRef.value]
-    const [moved] = list.splice(dragFromIdx.value, 1)
-    list.splice(idx, 0, moved)
-    listRef.value = list
-    onPersist?.()
-    // spring 弹性反馈
-    bounceIdx.value = idx
-    setTimeout(() => { bounceIdx.value = -1 }, 350)
-    dragFromIdx.value = -1; dragOverIdx.value = -1
-  }
-  function onDragEnd() { dragFromIdx.value = -1; dragOverIdx.value = -1 }
-
   // ── 多选 ──
   const multiMode = ref(false)
   const selectedSet = ref(new Set())
 
   function toggleMultiMode() {
     multiMode.value = !multiMode.value
-    if (multiMode.value) { sortMode.value = false; dragFromIdx.value = -1; dragOverIdx.value = -1 }
+    if (multiMode.value) { sortMode.value = false }
     else { selectedSet.value.clear() }
   }
 
@@ -131,11 +102,9 @@ export function useSongList(listRef, onPersist) {
   }
 
   return {
-    // 排序
-    sortMode, dragFromIdx, dragOverIdx, sortOrderMap,
+    // 排序（序号）
+    sortMode, sortOrderMap,
     toggleSortMode, onSortOrderInput, applySortOrder,
-    // 拖拽
-    onDragStart, onDragOver, onDragLeave, onDrop, onDragEnd, bounceIdx,
     // 多选
     multiMode, selectedSet,
     toggleMultiMode, toggleSelect, isAllSelectedFn, toggleSelectAllFn,

@@ -138,6 +138,9 @@ const BACKUP_KEYS = [
   { json: "rhizome_delete_confirm",         ls: "rhizome-delete-confirm" },
   { json: "rhizome_lyric_offset",           ls: "rhizome-lyric-offset" },
   { json: "rhizome_song_cache",             ls: "rhizome-song-cache" },
+  { json: "rhizome_report_generated",       ls: "rhizome-report-generated" },
+  { json: "rhizome_sound_enabled",          ls: "rhizome-sound-enabled" },
+  { json: "rhizome_sound_volume",           ls: "rhizome-sound-volume" },
   { json: "local_playlists",                ls: "local_playlists" },
   { json: "local_playlist_songs",           ls: "local_playlist_songs" },
   { json: "playHistoryView",                ls: "playHistoryView" },
@@ -262,6 +265,10 @@ contextBridge.exposeInMainWorld("electron", {
   // 数据清除
   clearAllData: () => ipcRenderer.invoke("clear-all-data"),
   appQuit: () => ipcRenderer.send("app-quit"),
+
+  // 退出前报告生成握手
+  onPrepareQuit: (cb) => ipcRenderer.on("prepare-quit", cb),
+  sendQuitReady: () => ipcRenderer.send("quit-ready"),
 
   // 全局快捷键
   updateGlobalShortcuts: (list) => ipcRenderer.invoke("update-global-shortcuts", list),

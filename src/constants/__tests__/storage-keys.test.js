@@ -26,6 +26,9 @@ const EXPECTED = {
     K_DELETE_CONFIRM: 'rhizome-delete-confirm',
     K_LYRIC_OFFSET: 'rhizome-lyric-offset',
     K_SONG_CACHE: 'rhizome-song-cache',
+    K_REPORT_GENERATED: 'rhizome-report-generated',
+    K_SOUND_ENABLED: 'rhizome-sound-enabled',
+    K_SOUND_VOLUME: 'rhizome-sound-volume',
     // ── 旧版 / 非 rhizome 前缀（兼容） ──
     K_LOCAL_PLAYLISTS: 'local_playlists',
     K_PLAYLIST_SONGS: 'local_playlist_songs',

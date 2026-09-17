@@ -6,43 +6,97 @@
 
 <script setup>
 import { useLocalMusicStore } from '@/stores/localMusicStore'
+import { usePlayerStore } from '@/stores/playerStore'
 import { ref, onMounted } from "vue";
-import { checkScheduledReports, generateReportBlob, getReportSavePath } from '@/composables/useReportGenerator'
+import { generateReportForType, getReportSavePath, blobToBase64 } from '@/composables/useReportGenerator'
 import { checkAndGenerateWeekly } from '@/composables/useWeeklyPlaylists'
-import { K_PLAY_COUNT_REAL } from '@/constants/storage-keys'
+import { initGlobalUiSound, playCursorSound, preloadSfx, CLICKABLE_SELECTOR } from '@/composables/useSound'
+import { REPORT_TYPES, reportFilename, isReportGenerated, markReportGenerated, previousPeriodDate } from '@/utils/report'
 
 const appReady = ref(false)
+const playerStore = usePlayerStore()
+let localStoreRef = null
 
-async function generateScheduledReports(localStore) {
+// 写报告 PNG 到报告目录
+async function saveReportBlob(savePath, blob, filename) {
+  const base64 = await blobToBase64(blob)
+  const ok = await window.electron?.saveReportFile?.(savePath, filename, base64)
+  return !!ok
+}
+
+// 生成"当前周期"（当天/本周/本月/本年）的报告，同名覆盖
+async function generateCurrentReports() {
   try {
-    const isDark = document.documentElement.classList.contains('theme-dark')
-    const songs = localStore.songList.map(s => {
-      const countMap = JSON.parse(localStorage.getItem(K_PLAY_COUNT_REAL) || '{}')
-      return { ...s, playCount: countMap[s.path] || 0 }
-    })
-    const tasks = checkScheduledReports(songs, isDark)
+    if (!localStoreRef) return
     const savePath = getReportSavePath()
-    if (!savePath) return  // 未设置路径，跳过
-    for (const task of tasks) {
-      const blob = await generateReportBlob(songs, isDark, task.title, task.subtitle)
-      if (!blob) continue
-      const savePath = getReportSavePath()
-      if (savePath) {
-        // 通过 Electron 写文件
-        const arrayBuffer = await blob.arrayBuffer()
-        const uint8 = new Uint8Array(arrayBuffer)
-        const base64 = btoa(String.fromCharCode(...uint8))
-        window.electron?.saveReportFile?.(savePath, task.filename, base64)
-      }
+    if (!savePath) return
+    const isDark = document.documentElement.classList.contains('theme-dark')
+    for (const t of REPORT_TYPES) {
+      const result = await generateReportForType(t.key, localStoreRef.songList, isDark)
+      if (!result) continue
+      await saveReportBlob(savePath, result.blob, result.filename)
+      markReportGenerated(result.filename)
     }
   } catch {}
 }
 
+// 启动时：补上一周期（昨天/上周/上月/去年）的遗漏报告
+async function backfillMissedReports() {
+  try {
+    if (!localStoreRef) return
+    const savePath = getReportSavePath()
+    if (!savePath) return
+    const isDark = document.documentElement.classList.contains('theme-dark')
+    for (const t of REPORT_TYPES) {
+      const date = previousPeriodDate(t.key)
+      const filename = reportFilename(t.key, date)
+      if (isReportGenerated(filename)) continue
+      const result = await generateReportForType(t.key, localStoreRef.songList, isDark, 10, date)
+      if (!result) continue
+      await saveReportBlob(savePath, result.blob, result.filename)
+      markReportGenerated(result.filename)
+    }
+  } catch {}
+}
+
+// 整点检测：用户进行过至少一次操作时，若跨小时则生成当前周期报告
+let lastHourCheck = new Date().getHours()
+function onUserActivity() {
+  const h = new Date().getHours()
+  if (h !== lastHourCheck) {
+    lastHourCheck = h
+    generateCurrentReports()
+  }
+}
+
+// 光标悬停音效：未播放状态下，光标经过可交互元素播放 ui_cursor_29.wav（进入新元素即触发，不去重）
+let lastHoverEl = null
+function initCursorSound() {
+  document.addEventListener('mouseover', (e) => {
+    if (playerStore.isPlaying) return
+    const el = e.target instanceof Element ? e.target.closest(CLICKABLE_SELECTOR) : null
+    if (el && el !== lastHoverEl) {
+      lastHoverEl = el
+      playCursorSound()
+    } else if (!el) {
+      lastHoverEl = null
+    }
+  })
+}
+
 onMounted(async () => {
   const localStore = useLocalMusicStore()
+  localStoreRef = localStore
   await localStore.migrateIfNeeded()
   await localStore.initFromStorage()
   localStore.mergeSongCache()
+
+  // 全局 UI 音效：点击任意可交互元素播放通用音效
+  initGlobalUiSound()
+  // 预加载常用音效（Web Audio）
+  preloadSfx()
+  // 光标悬停音效（未播放状态）
+  initCursorSound()
 
   // 周报歌单（本周最爱 + 每周发现）
   checkAndGenerateWeekly(localStore.songList)
@@ -54,8 +108,19 @@ onMounted(async () => {
     }
   }, 30 * 60 * 1000)
 
-  // 定时报告（周报/月报/年报）—— 异步后台生成，不阻塞 UI
-  generateScheduledReports(localStore)
+  // 报告：启动补遗漏 + 生成当前周期
+  backfillMissedReports().then(() => generateCurrentReports())
+
+  // 整点检测（用户进行过至少一次操作时触发）
+  document.addEventListener('click', onUserActivity)
+  document.addEventListener('keydown', onUserActivity)
+
+  // 关闭应用时生成报告（主进程 prepare-quit 握手，完成后回 quit-ready 再退出）
+  window.electron?.onPrepareQuit?.(async () => {
+    await generateCurrentReports()
+    await backfillMissedReports()
+    window.electron?.sendQuitReady?.()
+  })
 
   // 隐藏启动动画（确保至少显示 800ms）
   const splash = document.getElementById('rhizome-splash')
@@ -170,5 +235,16 @@ html, body, #app {
 }
 #app-main.revealed {
   opacity: 1;
+}
+
+/* 播放次数档位竖条（各歌曲列表 song-item 左侧） */
+.pc-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  pointer-events: none;
+  z-index: 1;
 }
 </style>

@@ -57,7 +57,7 @@
       </button>
       <template v-if="multiMode">
         <button class="rc-global-btn" @click="toggleSelectAll"><span>{{ isAllSelected ? '全不选' : '全选' }}</span></button>
-        <button class="rc-global-btn" :class="{ 'delete-warning': confirmHint('__batch__') !== '' }" :style="pulseFor('__batch__')" @click="batchRemove" :disabled="!selectedSet.size" :title="confirmHint('__batch__') || '批量移除'">
+        <button class="rc-global-btn" :class="{ 'delete-warning': confirmHint('__batch__') !== '' }" :style="pulseFor('__batch__')" @click="batchRemove" :disabled="!selectedSet.size" :title="confirmHint('__batch__') || '批量移除'" data-charge-sound>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke-width="2"/></svg>
           <span>移除</span>
         </button>
@@ -72,22 +72,14 @@
           :style="staggerStyle(idx)"
           :class="{
             'sort-mode': sortMode,
-            'dragging': sortMode && dragFromIdx === idx,
-            'drag-over': sortMode && dragOverIdx === idx,
             'selected': multiMode && selectedSet.has(item.path),
             playing: isCurrentSong(item),
-            'sort-bounce': bounceIdx === idx,
             'missing': item.exists === false
           }"
-          :draggable="sortMode"
           @click="multiMode ? toggleSelect(item) : null"
           @dblclick="!sortMode && !multiMode && playSong(item)"
-          @dragstart="sortMode ? onDragStart(idx, $event) : null"
-          @dragover.prevent="sortMode ? onDragOver(idx) : null"
-          @dragleave="sortMode ? onDragLeave() : null"
-          @drop="sortMode ? onDrop(idx) : null"
-          @dragend="sortMode ? onDragEnd() : null"
       >
+        <span v-if="barColor(item)" class="pc-bar" :style="{ background: barColor(item) }"></span>
         <div class="song-index" v-if="sortMode">
           <input
             type="text"
@@ -101,7 +93,7 @@
         </div>
         <div class="song-index" v-else>{{ idx + 1 }}</div>
         <div class="song-cover" v-if="item.coverUrl">
-          <img :src="item.coverUrl" alt="cover" />
+          <img :src="item.coverUrl" alt="cover" loading="lazy" decoding="async" />
         </div>
         <div class="song-cover" v-else>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -119,7 +111,7 @@
               <path d="M5 3l14 9-14 9V3z" stroke-width="2"/>
             </svg>
           </button>
-          <button class="song-btn" :class="{ 'delete-warning': confirmHint(item.path) !== '' }" :style="pulseFor(item.path)" @click="removeFromPlaylist(item)" :disabled="!item.exists" :title="confirmHint(item.path) || '从歌单移除'">
+          <button class="song-btn" :class="{ 'delete-warning': confirmHint(item.path) !== '' }" :style="pulseFor(item.path)" @click="removeFromPlaylist(item)" :disabled="!item.exists" :title="confirmHint(item.path) || '从歌单移除'" data-charge-sound>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke-width="2"/>
             </svg>
@@ -212,6 +204,7 @@ import { K_LOCAL_PLAYLISTS, K_PLAYLIST_SONGS } from "@/constants/storage-keys";
 import { useDeleteConfirm } from '@/composables/useDeleteConfirm'
 import { formatTime } from '@/utils/format'
 import { createSongFromMeta } from '@/utils/song-factory'
+import { usePlayCountBar } from '@/composables/usePlayCountBar'
 
 import { useSongList } from "@/composables/useSongList";
 
@@ -222,6 +215,7 @@ const playerStore = usePlayerStore()
 const localMusicStore = useLocalMusicStore()
 const { isCurrentSong } = useCurrentSongHighlight()
 const { confirmDelete, resetConfirm, clickCount, confirmHint, pulseFor } = useDeleteConfirm()
+const { barColor } = usePlayCountBar()
 
 const playlistInfo = ref({})
 const realSongList = ref([])
@@ -247,9 +241,8 @@ const persistSongOrder = () => {
 }
 
 const {
-  sortMode, dragFromIdx, dragOverIdx, sortOrderMap,
+  sortMode, sortOrderMap,
   toggleSortMode, onSortOrderInput,
-  onDragStart, onDragOver, onDragLeave, onDrop, onDragEnd, bounceIdx,
   multiMode, selectedSet,
   toggleMultiMode, toggleSelect, isAllSelectedFn, toggleSelectAllFn,
   cancelMulti, scrollToCurrent,
@@ -421,6 +414,8 @@ onMounted(async () => { if (!localMusicStore.loaded && !localMusicStore.loading)
   height: 52px; display: flex; align-items: center;
   padding: 0 12px; border-bottom: 1px solid var(--border-color);
   position: relative; z-index: 0;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 52px;
 }
 .song-item::before {
   content: ''; position: absolute; inset: 0; z-index: -1;
@@ -430,10 +425,6 @@ onMounted(async () => { if (!localMusicStore.loaded && !localMusicStore.loading)
 }
 .song-item:hover::before { transform: scaleX(1); }
 .song-item:hover { color: var(--btn-hover-text); }
-.song-item.sort-mode { cursor: grab; }
-.song-item.sort-mode:active { cursor: grabbing; }
-.song-item.dragging { opacity: 0.35; }
-.song-item.drag-over { border-top: 2px solid var(--btn-hover-bg); }
 .song-item.selected {
   background: var(--btn-hover-bg);
   color: var(--btn-hover-text);

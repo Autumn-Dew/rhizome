@@ -29,6 +29,9 @@ export const K_WEEKLY_ENABLED     = 'rhizome-weekly-playlists-enabled'
 export const K_DELETE_CONFIRM     = 'rhizome-delete-confirm'
 export const K_LYRIC_OFFSET      = 'rhizome-lyric-offset'
 export const K_SONG_CACHE        = 'rhizome-song-cache'
+export const K_REPORT_GENERATED  = 'rhizome-report-generated'
+export const K_SOUND_ENABLED     = 'rhizome-sound-enabled'
+export const K_SOUND_VOLUME      = 'rhizome-sound-volume'
 
 // ── 旧版 / 非 rhizome 前缀（兼容） ──
 export const K_LOCAL_PLAYLISTS    = 'local_playlists'
@@ -60,6 +63,9 @@ export const ALL_STORAGE_KEYS = [
   K_DELETE_CONFIRM,
   K_LYRIC_OFFSET,
   K_SONG_CACHE,
+  K_REPORT_GENERATED,
+  K_SOUND_ENABLED,
+  K_SOUND_VOLUME,
   // 大型数据
   K_LOCAL_PLAYLISTS,
   K_PLAYLIST_SONGS,

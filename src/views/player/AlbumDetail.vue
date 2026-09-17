@@ -50,9 +50,10 @@
           :style="staggerStyle(idx)"
           :class="{ selected: multiMode && selectedSet.has(item.path), playing: isCurrentSong(item), missing: item.exists === false }"
           @click="multiMode ? toggleSelect(item) : null" @dblclick="!multiMode && playSong(item)">
+        <span v-if="barColor(item)" class="pc-bar" :style="{ background: barColor(item) }"></span>
         <div class="song-index">{{ idx + 1 }}</div>
         <div class="song-cover" v-if="item.coverUrl">
-          <img :src="item.coverUrl" alt="cover" />
+          <img :src="item.coverUrl" alt="cover" loading="lazy" decoding="async" />
         </div>
         <div class="song-cover" v-else>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -119,6 +120,7 @@ import { usePageEnter } from '@/composables/usePageEnter'
 import FavoriteButton from '@/components/common/FavoriteButton.vue'
 import { K_LOCAL_PLAYLISTS, K_PLAYLIST_SONGS } from "@/constants/storage-keys";
 import { formatTime } from '@/utils/format'
+import { usePlayCountBar } from '@/composables/usePlayCountBar'
 
 const route = useRoute()
 const router = useRouter()
@@ -127,6 +129,7 @@ const playerStore = usePlayerStore()
 const localMusicStore = useLocalMusicStore()
 const { isCurrentSong } = useCurrentSongHighlight()
 const { entered, staggerStyle, triggerEnter } = usePageEnter()
+const { barColor } = usePlayCountBar()
 
 const subType = ref(route.params.type) // 'album' | 'artist'
 const detailTitle = ref(decodeURIComponent(route.params.name || ''))
@@ -208,6 +211,8 @@ onMounted(async () => { if (!localMusicStore.loaded && !localMusicStore.loading)
   height: 52px; display: flex; align-items: center;
   padding: 0 12px; border-bottom: 1px solid var(--border-color);
   position: relative; z-index: 0;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 52px;
 }
 .song-item::before {
   content: ''; position: absolute; inset: 0; z-index: -1;
@@ -217,10 +222,6 @@ onMounted(async () => { if (!localMusicStore.loaded && !localMusicStore.loading)
 }
 .song-item:hover::before { transform: scaleX(1); }
 .song-item:hover { color: var(--btn-hover-text); }
-.song-item.sort-mode { cursor: grab; }
-.song-item.sort-mode:active { cursor: grabbing; }
-.song-item.dragging { opacity: 0.35; }
-.song-item.drag-over { border-top: 2px solid var(--btn-hover-bg); }
 .song-item.selected {
   background: var(--btn-hover-bg);
   color: var(--btn-hover-text);

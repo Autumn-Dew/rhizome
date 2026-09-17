@@ -67,6 +67,7 @@ import { usePageEnter } from '@/composables/usePageEnter'
 import { useLocalMusicStore } from '@/stores/localMusicStore'
 import { usePlayerStore } from '@/stores/playerStore'
 import { K_PLAY_HISTORY_FULL } from '@/constants/storage-keys'
+import { playCursorSound } from '@/composables/useSound'
 
 const router = useRouter()
 const { themeClass } = useGlobalTheme()
@@ -483,6 +484,8 @@ function onMouseMove(e) {
     hoveredIdx = bestIdx
     draw()
     updateHoverCard()
+    // 光标 hover 到新站点时播放音效（未播放状态）
+    if (bestIdx >= 0 && !playerStore.isPlaying) playCursorSound()
   }
 }
 

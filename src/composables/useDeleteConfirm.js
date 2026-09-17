@@ -2,6 +2,7 @@ import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { K_DELETE_CONFIRM } from '@/constants/storage-keys'
 import { DELETE_CONFIRM_DEFAULT, DELETE_CONFIRM_OPTIONS } from '@/constants/defaults'
+import { playChargeSound } from '@/composables/useSound'
 
 const requiredCount = ref(
   (() => {
@@ -23,11 +24,13 @@ export function useDeleteConfirm() {
     if (lastTarget.value !== targetId) {
       lastTarget.value = targetId
       clickCount.value = 1
+      playChargeSound(clickCount.value)
       ElMessage({ message: `再点 ${requiredCount.value - 1} 次删除`, type: 'warning', duration: 1500, showClose: false })
       resetTimer = setTimeout(resetConfirm, 3000)
       return false
     }
     clickCount.value++
+    playChargeSound(clickCount.value)
     const remaining = requiredCount.value - clickCount.value
     if (remaining > 0) {
       ElMessage({ message: `再点 ${remaining} 次删除`, type: 'warning', duration: 1500, showClose: false })
@@ -41,6 +44,7 @@ export function useDeleteConfirm() {
 
   function confirmHardDelete() {
     hardClickCount.value++
+    playChargeSound(hardClickCount.value)
     const remaining = HARD_DELETE_COUNT - hardClickCount.value
     if (remaining > 0) {
       ElMessage({ message: `清除数据需确认 · 再点 ${remaining} 次`, type: 'error', duration: 2000, showClose: false })

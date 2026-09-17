@@ -34,7 +34,12 @@ export const useLocalMusicStore = defineStore('localMusic', {
                 }
 
                 console.log(`[localMusic] 读取到 ${p.length} 个路径，${f.length} 个文件夹`)
-                if (!p.length) { this.loaded = true; return }
+                if (!p.length) {
+                    // paths 为空时也同步清空缓存，避免残留脏 cache 被 mergeSongCache 加回
+                    this._saveSongCache()
+                    this.loaded = true
+                    return
+                }
 
                 const CONCURRENCY = 25
                 const results = []
@@ -195,6 +200,7 @@ export const useLocalMusicStore = defineStore('localMusic', {
         async removeSong(song) {
             if (!song?.path) return
             this.songList = this.songList.filter(s => s.path !== song.path)
+            this._saveSongCache()
             await this._saveCurrentPaths()
         },
 
@@ -213,6 +219,8 @@ export const useLocalMusicStore = defineStore('localMusic', {
         async removeFolder(folderPath) {
             this.folders = this.folders.filter(f => f.path !== folderPath)
             this.songList = this.songList.filter(s => !s.path.startsWith(folderPath))
+            // 同步清理缓存，避免重启后 mergeSongCache 把已删除文件夹的歌曲加回（导致无法重新添加）
+            this._saveSongCache()
             await Promise.all([this._saveCurrentPaths(), this._saveFolders()])
         },
     },

@@ -28,9 +28,10 @@
 
     <div class="song-list">
       <div class="song-item" v-for="(item, idx) in realHistoryList" :key="idx" @dblclick="playSong(item)" :class="{ playing: isCurrentSong(item) }" :style="staggerStyle(idx)">
+        <span v-if="barColor(item)" class="pc-bar" :style="{ background: barColor(item) }"></span>
         <div class="song-index">{{ idx + 1 }}</div>
         <div class="song-cover" v-if="item.coverUrl">
-          <img :src="item.coverUrl" alt="cover" />
+          <img :src="item.coverUrl" alt="cover" loading="lazy" decoding="async" />
         </div>
         <div class="song-cover" v-else>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18V5l12-2v13" stroke-width="2"/></svg>
@@ -80,6 +81,7 @@ import FavoriteButton from "@/components/common/FavoriteButton.vue";
 import { K_PLAY_HISTORY_VIEW } from "@/constants/storage-keys";
 import { formatTime } from '@/utils/format'
 import { useSongList } from "@/composables/useSongList";
+import { usePlayCountBar } from '@/composables/usePlayCountBar'
 
 const { themeClass } = useGlobalTheme();
 const { entered, staggerStyle } = usePageEnter();
@@ -87,6 +89,7 @@ const router = useRouter();
 const playerStore = usePlayerStore();
 const localMusicStore = useLocalMusicStore();
 const { isCurrentSong } = useCurrentSongHighlight();
+const { barColor } = usePlayCountBar()
 
 const rawHistory = ref([]);
 
@@ -277,6 +280,8 @@ onMounted(() => {
   border-bottom: 1px solid var(--border-color);
   position: relative;
   z-index: 0;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 48px;
 }
 
 .song-item::before {

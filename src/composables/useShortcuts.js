@@ -1,6 +1,7 @@
 import { onMounted, onUnmounted } from 'vue'
 import { K_SHORTCUTS } from '@/constants/storage-keys'
 import { SHORTCUT_DEFAULTS, SHORTCUT_ACTION_DEFS } from '@/constants/defaults'
+import { playShortcutSound } from '@/composables/useSound'
 
 // 每个 action：label + local(有/无) + global(有/无)
 // local: 应用内键监听；global: Electron 全局（窗口外也生效）
@@ -68,13 +69,13 @@ function syncElectronGlobal() {
 
 export function useShortcuts(handlers) {
   const handlerMap = {
-    togglePlay:   () => handlers.togglePlay?.(),
-    prevSong:     () => handlers.prevSong?.(),
-    nextSong:     () => handlers.nextSong?.(),
-    volUp:        () => handlers.volUp?.(),
-    volDown:      () => handlers.volDown?.(),
-    toggleWindow: () => window.electron?.minimize?.(), // placeholder
-    toggleDesktopLyrics: () => handlers.toggleDesktopLyrics?.(),
+    togglePlay:   () => { playShortcutSound(); handlers.togglePlay?.() },
+    prevSong:     () => { playShortcutSound(); handlers.prevSong?.() },
+    nextSong:     () => { playShortcutSound(); handlers.nextSong?.() },
+    volUp:        () => { playShortcutSound(); handlers.volUp?.() },
+    volDown:      () => { playShortcutSound(); handlers.volDown?.() },
+    toggleWindow: () => window.electron?.minimize?.(), // placeholder（主进程切换，渲染层不额外播放音效）
+    toggleDesktopLyrics: () => { playShortcutSound(); handlers.toggleDesktopLyrics?.() },
   }
 
   const onKeydown = (e) => {
@@ -91,21 +92,22 @@ export function useShortcuts(handlers) {
     syncElectronGlobal()
     // Electron IPC 全局快捷键
     const ipc = window.electron
-    ipc?.onMediaPlayPause?.(() => handlers.togglePlay?.())
-    ipc?.onMediaNext?.(() => handlers.nextSong?.())
-    ipc?.onMediaPrev?.(() => handlers.prevSong?.())
-    ipc?.onMediaVolUp?.(() => handlers.volUp?.())
-    ipc?.onMediaVolDown?.(() => handlers.volDown?.())
+    ipc?.onMediaPlayPause?.(() => { playShortcutSound(); handlers.togglePlay?.() })
+    ipc?.onMediaNext?.(() => { playShortcutSound(); handlers.nextSong?.() })
+    ipc?.onMediaPrev?.(() => { playShortcutSound(); handlers.prevSong?.() })
+    ipc?.onMediaVolUp?.(() => { playShortcutSound(); handlers.volUp?.() })
+    ipc?.onMediaVolDown?.(() => { playShortcutSound(); handlers.volDown?.() })
     // 桌面歌词全局快捷键
     if (ipc?.onToggleDesktopLyrics) {
-      ipc.onToggleDesktopLyrics(() => handlers.toggleDesktopLyrics?.())
+      ipc.onToggleDesktopLyrics(() => { playShortcutSound(); handlers.toggleDesktopLyrics?.() })
     }
-    // toggleWindow 特殊处理：切换主窗口显隐
+    // toggleWindow 特殊处理：主进程切换窗口后发 IPC，此处播快捷键音效
     if (ipc?.onToggleWindow) {
-      ipc.onToggleWindow(() => handlers.toggleWindow?.())
+      ipc.onToggleWindow(() => { playShortcutSound(); handlers.toggleWindow?.() })
     } else {
       // 手动注册自定义事件
       window.addEventListener('toggle-window-custom', () => {
+        playShortcutSound()
         handlers.toggleWindow?.()
       })
     }

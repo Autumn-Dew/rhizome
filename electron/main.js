@@ -43,6 +43,8 @@ function createWindow() {
             sandbox: false,
             preload: path.join(__dirname, 'preload.js'),
             webSecurity: false,
+            // 光标音效由 mouseover 触发（非用户手势），需允许无手势播放音频
+            autoplayPolicy: 'no-user-gesture-required',
         },
     })
 
@@ -110,7 +112,7 @@ function buildTrayMenu() {
         { type: 'separator' },
         { label: lyricsLabel, click: () => win?.webContents.send('toggle-desktop-lyrics') },
         { type: 'separator' },
-        { label: '退出', click: () => { app.isQuitting = true; tray.destroy(); win.destroy(); app.quit() } },
+        { label: '退出', click: () => quitApp() },
     ])
 
     tray.setContextMenu(menu)
@@ -482,12 +484,40 @@ ipcMain.handle('clear-all-data', async () => {
     } catch { return false }
 })
 
-ipcMain.on('app-quit', () => {
+let quitReady = false
+
+function finishQuit() {
+    if (win && !win.isDestroyed()) win.destroy()
+    lyricWindow?.destroy()
+    tray?.destroy()
+    app.quit()
+}
+
+function quitApp() {
+    if (app.isQuitting) return
     app.isQuitting = true
     lyricWindow?.destroy()
     tray?.destroy()
-    win?.destroy()
-    app.quit()
+    if (win && !win.isDestroyed()) {
+        // 请求渲染进程在退出前生成报告，完成回 quit-ready；超时兜底强制退出
+        quitReady = false
+        win.webContents.send('prepare-quit')
+        setTimeout(() => {
+            if (!quitReady) finishQuit()
+        }, 1500)
+    } else {
+        app.quit()
+    }
+}
+
+ipcMain.on('quit-ready', () => {
+    if (!app.isQuitting) return
+    quitReady = true
+    finishQuit()
+})
+
+ipcMain.on('app-quit', () => {
+    quitApp()
 })
 
 // ============================================================
@@ -630,6 +660,7 @@ ipcMain.handle('update-global-shortcuts', async (e, list) => {
             globalShortcut.register(buildAccelerator(s.combo), () => {
                 if (s.event === 'toggle-window') {
                     if (win.isVisible()) { win.hide() } else { win.show(); win.focus() }
+                    win?.webContents.send('toggle-window')
                 } else if (s.event) {
                     win?.webContents.send(s.event)
                 }
@@ -657,6 +688,7 @@ app.whenReady().then(() => {
             globalShortcut.register(buildAccelerator(s.combo), () => {
                 if (s.event === 'toggle-window') {
                     if (win.isVisible()) { win.hide() } else { win.show(); win.focus() }
+                    win?.webContents.send('toggle-window')
                 } else {
                     win?.webContents.send(s.event)
                 }
@@ -680,7 +712,9 @@ app.whenReady().then(() => {
     }
 })
 
-app.on('window-all-closed', () => {})
+app.on('window-all-closed', () => {
+    if (app.isQuitting) app.quit()
+})
 
 app.on('will-quit', () => {
     globalShortcut.unregisterAll()

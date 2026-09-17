@@ -44,7 +44,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
           <span>加入歌单</span>
         </button>
-        <button class="rc-global-btn" :class="{ 'delete-warning': confirmHint('__batch__') !== '' }" :style="pulseFor('__batch__')" @click="batchDelete" :disabled="!selectedSet.size" :title="confirmHint('__batch__') || '批量删除'">
+        <button class="rc-global-btn" :class="{ 'delete-warning': confirmHint('__batch__') !== '' }" :style="pulseFor('__batch__')" @click="batchDelete" :disabled="!selectedSet.size" :title="confirmHint('__batch__') || '批量删除'" data-charge-sound>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2M10 11v6M14 11v6M5 6h14v14a2 2 0 012 2H7a2 2 0 01-2-2V6z" stroke-linecap="round"/></svg>
           <span>删除</span>
         </button>
@@ -71,38 +71,49 @@
     </div>
 
     <!-- 文件夹横向滚动列表 -->
-    <div class="folder-strip" ref="folderStripRef" v-if="!musicStore.loading && musicStore.folders.length && viewMode === 'folders'">
-      <button
-          class="folder-chip"
-          :class="{ active: activeFolder === null }"
-          @click="activeFolder = null"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <path d="M9 18V5l12-2v13" stroke-width="2"/>
-        </svg>
-        <span>全部 ({{ musicStore.songList.length }})</span>
-      </button>
-      <button
-          v-for="folder in musicStore.folders"  
-          :key="folder.path"
-          class="folder-chip"
-          :class="{ active: activeFolder === folder.path }"
-          @click="activeFolder = folder.path"
-          @click.middle.prevent="removeFolder(folder)"
-          :title="folder.path"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" stroke-width="2"/>
-        </svg>
-        <span>{{ folder.name }}</span>
-        <span class="folder-count">{{ folder.songCount }}</span>
-      </button>
+    <div class="folder-strip" v-if="!musicStore.loading && musicStore.folders.length && viewMode === 'folders'">
+      <div class="folder-strip-scroll" ref="folderStripRef" @wheel.prevent="onFolderStripWheel">
+        <button
+            class="folder-chip"
+            :class="{ active: activeFolder === null }"
+            @click="folderSortMode ? exitFolderSort() : (activeFolder = null)"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M9 18V5l12-2v13" stroke-width="2"/>
+          </svg>
+          <span>全部 ({{ musicStore.songList.length }})</span>
+        </button>
+        <button
+            v-for="(folder, idx) in musicStore.folders"
+            :key="folder.path"
+            class="folder-chip"
+            :class="{
+              active: activeFolder === folder.path,
+              'sort-mode': folderSortMode,
+              'sort-source': folderSortMode && folderSortIdx === idx,
+              'sort-target': folderSortMode && folderTargetIdx === idx
+            }"
+            @click="onFolderChipClick(folder, idx)"
+            @click.middle.prevent="removeFolder(folder)"
+            @mousedown="onFolderChipMouseDown(idx)"
+            @mouseup="onFolderChipMouseUp"
+            @mouseenter="onFolderChipMouseEnter(idx)"
+            @mouseleave="onFolderChipMouseLeave"
+            :title="folder.path"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" stroke-width="2"/>
+          </svg>
+          <span>{{ folder.name }}</span>
+          <span class="folder-count">{{ folder.songCount }}</span>
+        </button>
+      </div>
     </div>
 
     <!-- 专辑视图 -->
     <div class="view-grid" v-if="viewMode === 'albums'">
       <div class="view-card" v-for="(a, ai) in albums" :key="a.name" @click="goAlbum(a.name)" :style="staggerStyle(ai)">
-        <div class="view-card-cover"><img v-if="a.coverUrl" :src="a.coverUrl" /><svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke-width="2"/></svg></div>
+        <div class="view-card-cover"><img v-if="a.coverUrl" :src="a.coverUrl" loading="lazy" decoding="async" /><svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke-width="2"/></svg></div>
         <div class="view-card-name">{{ a.name }}</div>
         <div class="view-card-badge">{{ a.count }}</div>
       </div>
@@ -111,7 +122,7 @@
     <!-- 艺人视图 -->
     <div class="view-grid" v-if="viewMode === 'artists'">
       <div class="view-card" v-for="(a, ai) in artists" :key="a.name" @click="goArtist(a.name)" :style="staggerStyle(ai)">
-        <div class="view-card-cover"><img v-if="a.coverUrl" :src="a.coverUrl" /><svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke-width="2"/></svg></div>
+        <div class="view-card-cover"><img v-if="a.coverUrl" :src="a.coverUrl" loading="lazy" decoding="async" /><svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10" stroke-width="2"/></svg></div>
         <div class="view-card-name">{{ a.name }}</div>
         <div class="view-card-badge">{{ a.count }}</div>
       </div>
@@ -127,20 +138,12 @@
             selected: multiMode && selectedSet.has(item.path),
             playing: isCurrentSong(item),
             'sort-mode': sortMode,
-            'dragging': sortMode && dragFromIdx === idx,
-            'drag-over': sortMode && dragOverIdx === idx,
-            'sort-bounce': bounceIdx === idx,
             'missing': item.exists === false
           }"
-          :draggable="sortMode"
           @click="sortMode ? null : multiMode ? toggleSelect(item) : null"
           @dblclick="!sortMode && !multiMode && playItem(item)"
-          @dragstart="sortMode ? onDragStart(idx, $event) : null"
-          @dragover.prevent="sortMode ? onDragOver(idx) : null"
-          @dragleave="sortMode ? onDragLeave() : null"
-          @drop="sortMode ? onDrop(idx) : null"
-          @dragend="sortMode ? onDragEnd() : null"
       >
+        <span v-if="barColor(item)" class="pc-bar" :style="{ background: barColor(item) }"></span>
         <div class="song-index" v-if="sortMode">
           <input
             type="text"
@@ -154,7 +157,7 @@
         </div>
         <div class="song-index" v-else>{{ idx + 1 }}</div>
         <div class="song-cover" v-if="item.coverUrl">
-          <img :src="item.coverUrl" alt="cover" />
+          <img :src="item.coverUrl" alt="cover" loading="lazy" decoding="async" />
         </div>
         <div class="song-cover" v-else>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -173,7 +176,7 @@
               <path d="M5 3l14 9-14 9V3z" stroke-width="2"/>
             </svg>
           </button>
-          <button class="song-btn" :class="{ 'delete-warning': confirmHint(item.path) !== '' }" :style="pulseFor(item.path)" @click="deleteSong(item)" :title="confirmHint(item.path) || '删除'">
+          <button class="song-btn" :class="{ 'delete-warning': confirmHint(item.path) !== '' }" :style="pulseFor(item.path)" @click="deleteSong(item)" :title="confirmHint(item.path) || '删除'" data-charge-sound>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path
                   d="M3 6h18 M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2 M10 11v6 M14 11v6 M5 6h14v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6z"
@@ -242,6 +245,8 @@ import { K_LOCAL_PLAYLISTS, K_PLAYLIST_SONGS } from "@/constants/storage-keys";
 import { useDeleteConfirm } from '@/composables/useDeleteConfirm'
 import { formatTime } from '@/utils/format'
 import { createSongFromMeta } from '@/utils/song-factory'
+import { usePlayCountBar } from '@/composables/usePlayCountBar'
+import { playHoldSound } from '@/composables/useSound'
 
 const { themeClass } = useGlobalTheme();
 const router = useRouter()
@@ -249,6 +254,7 @@ const playerStore = usePlayerStore();
 const musicStore = useLocalMusicStore();
 const { isCurrentSong } = useCurrentSongHighlight();
 const { confirmDelete, resetConfirm, clickCount, confirmHint, pulseFor } = useDeleteConfirm()
+const { barColor } = usePlayCountBar()
 
 const viewMode = ref('folders')
 const activeAlbum = ref(null)
@@ -256,7 +262,7 @@ const activeArtist = ref(null)
 function goAlbum(name) { router.push(`/player/album/album/${encodeURIComponent(name)}`) }
 function goArtist(name) { router.push(`/player/album/artist/${encodeURIComponent(name)}`) }
 
-watch(viewMode, () => { resetEnter(); nextTick(() => { triggerEnter() }) })
+watch(viewMode, () => { exitFolderSort(); resetEnter(); nextTick(() => { triggerEnter() }) })
 
 const albums = computed(() => {
   const map = {}
@@ -297,37 +303,150 @@ const artistSongs = computed(() => {
 
 const songListRef = toRef(musicStore, 'songList')
 const {
-  sortMode, dragFromIdx, dragOverIdx, sortOrderMap,
+  sortMode, sortOrderMap,
   toggleSortMode, onSortOrderInput,
-  onDragStart, onDragOver, onDragLeave, onDragEnd, bounceIdx,
   multiMode, selectedSet,
   toggleMultiMode, toggleSelect, isAllSelectedFn, toggleSelectAllFn,
   cancelMulti, scrollToCurrent,
 } = useSongList(songListRef, () => musicStore._saveCurrentPaths())
 
-// 覆盖 onDrop：因为 filteredSongs 是 computed，拖拽索引需映射到 musicStore.songList 的真实索引
-function onDrop(idx) {
-  if (dragFromIdx.value === -1 || dragFromIdx.value === idx) {
-    dragFromIdx.value = -1; dragOverIdx.value = -1; return
-  }
-  const list = [...musicStore.songList]
-  const fromSong = filteredSongs.value[dragFromIdx.value]
-  const toSong = filteredSongs.value[idx]
-  const fromRealIdx = list.findIndex(s => s.path === fromSong.path)
-  const toRealIdx = list.findIndex(s => s.path === toSong.path)
-  if (fromRealIdx === -1 || toRealIdx === -1) {
-    dragFromIdx.value = -1; dragOverIdx.value = -1; return
-  }
-  const [moved] = list.splice(fromRealIdx, 1)
-  list.splice(toRealIdx, 0, moved)
-  musicStore.songList = list
-  musicStore._saveCurrentPaths()
-  dragFromIdx.value = -1; dragOverIdx.value = -1
-}
-
 const activeFolder = ref(null);
 const { entered, staggerStyle, triggerEnter, resetEnter } = usePageEnter();
 const folderStripRef = ref(null);
+
+// 文件夹 Strip 鼠标滚轮横向滚动（绑定在 template 上，随 v-if 渲染自动生效）
+function onFolderStripWheel(e) {
+  const strip = folderStripRef.value
+  if (strip) strip.scrollLeft += e.deltaY
+}
+
+// ── 文件夹长按排序（光标方向 + 延时变黑） ──
+const folderSortMode = ref(false)
+const folderSortIdx = ref(-1)
+const folderTargetIdx = ref(-1)
+let folderHoldTimer = null
+let folderEnterTimer = null
+let folderHoverTimer = null
+let folderHoldSoundFired = false
+let folderSortJustEntered = false
+
+function clearFolderHoldTimers() {
+  clearTimeout(folderHoldTimer)
+  clearTimeout(folderEnterTimer)
+  folderHoldTimer = null
+  folderEnterTimer = null
+}
+
+function clearFolderHoverTimer() {
+  clearTimeout(folderHoverTimer)
+  folderHoverTimer = null
+}
+
+function onFolderChipMouseDown(idx) {
+  if (folderSortMode.value) return
+  folderHoldSoundFired = false
+  clearFolderHoldTimers()
+  // 长按 1s：播放提示音效
+  folderHoldTimer = setTimeout(() => {
+    if (!folderHoldSoundFired) {
+      folderHoldSoundFired = true
+      playHoldSound()
+    }
+  }, 1000)
+  // 长按 4s：进入排序模式
+  folderEnterTimer = setTimeout(() => {
+    folderSortMode.value = true
+    folderSortIdx.value = idx
+    folderTargetIdx.value = -1
+    folderSortJustEntered = true
+  }, 4000)
+}
+
+function onFolderChipMouseUp() {
+  // 松手取消长按计时（已进入排序模式则保持）
+  clearFolderHoldTimers()
+  folderHoldSoundFired = false
+  // 排序模式下，若已有变黑目标，松手确认移动
+  if (folderSortMode.value && folderTargetIdx.value !== -1 && folderTargetIdx.value !== folderSortIdx.value) {
+    moveFolder(folderSortIdx.value, folderTargetIdx.value)
+    exitFolderSort()
+    folderSortJustEntered = true // 忽略随后的 click（松手会触发一次）
+    return
+  }
+  // 若 click 未落在 chip 上（移出后松手），兜底清除 justEntered，避免残留吞掉下次点击
+  if (folderSortJustEntered) {
+    setTimeout(() => { folderSortJustEntered = false }, 0)
+  }
+}
+
+function onFolderChipMouseEnter(idx) {
+  if (folderSortMode.value) onFolderSortHover(idx)
+}
+
+function onFolderChipMouseLeave() {
+  if (folderSortMode.value) {
+    onFolderSortLeave()
+  } else {
+    clearFolderHoldTimers()
+    folderHoldSoundFired = false
+  }
+}
+
+// 排序模式下，光标悬停到目标文件夹，延时 1s 后变黑（预览目标位置）
+function onFolderSortHover(idx) {
+  if (!folderSortMode.value) return
+  if (idx === folderSortIdx.value) {
+    clearFolderHoverTimer()
+    folderTargetIdx.value = -1
+    return
+  }
+  clearFolderHoverTimer()
+  folderHoverTimer = setTimeout(() => {
+    folderTargetIdx.value = idx
+  }, 1000)
+}
+
+function onFolderSortLeave() {
+  clearFolderHoverTimer()
+}
+
+function moveFolder(from, to) {
+  if (from === to) return
+  const list = [...musicStore.folders]
+  const [moved] = list.splice(from, 1)
+  let target = to
+  if (from < to) target--
+  list.splice(target, 0, moved)
+  musicStore.folders = list
+  musicStore._saveFolders()
+}
+
+function exitFolderSort() {
+  folderSortMode.value = false
+  folderSortIdx.value = -1
+  folderTargetIdx.value = -1
+  clearFolderHoldTimers()
+  clearFolderHoverTimer()
+  folderHoldSoundFired = false
+  folderSortJustEntered = false
+}
+
+function onFolderChipClick(folder, idx) {
+  // 长按进入排序模式后松手触发的 click 忽略
+  if (folderSortJustEntered) {
+    folderSortJustEntered = false
+    return
+  }
+  if (folderSortMode.value) {
+    // 点击变黑的目标文件夹确认移动
+    if (folderTargetIdx.value !== -1 && idx === folderTargetIdx.value && idx !== folderSortIdx.value) {
+      moveFolder(folderSortIdx.value, folderTargetIdx.value)
+    }
+    exitFolderSort()
+  } else {
+    activeFolder.value = folder.path
+  }
+}
 const searchQuery = ref('')
 const searchPlaceholder = computed(() => {
   if (viewMode.value === 'albums') return '搜索专辑...'
@@ -491,14 +610,6 @@ onMounted(async () => {
   if (!musicStore.loaded && !musicStore.loading) {
     await musicStore.initFromStorage()
   }
-  // 文件夹 Strip 鼠标滚轮水平滚动
-  const strip = folderStripRef.value
-  if (strip) {
-    strip.addEventListener('wheel', (e) => {
-      e.preventDefault()
-      strip.scrollLeft += e.deltaY
-    }, { passive: false })
-  }
   // 等 splash 淡出后再播入场动效
   if (document.querySelector('.splash-screen')) {
     window.addEventListener('appReady', triggerEnter, { once: true })
@@ -620,8 +731,13 @@ onMounted(async () => {
   color: var(--btn-hover-text);
 }
 
-/* 文件夹横向滚动条 */
+/* 文件夹横向滚动条（外层：分割线固定不随滚动；内层：滚动） */
 .folder-strip {
+  border-bottom: 1px solid transparent;
+  background: var(--bg-secondary);
+}
+
+.folder-strip-scroll {
   display: flex;
   gap: 6px;
   padding: 10px 12px;
@@ -629,11 +745,9 @@ onMounted(async () => {
   overflow-y: hidden;
   white-space: nowrap;
   scrollbar-width: none;
-  border-bottom: 1px solid transparent;
-  background: var(--bg-secondary);
 }
 
-.folder-strip::-webkit-scrollbar {
+.folder-strip-scroll::-webkit-scrollbar {
   display: none;
 }
 
@@ -680,6 +794,24 @@ onMounted(async () => {
   background: rgba(0,0,0,0.15);
 }
 
+/* 文件夹长按排序模式 */
+.folder-chip.sort-mode {
+  cursor: pointer;
+  border-style: dashed;
+}
+.folder-chip.sort-source {
+  border-style: solid;
+  border-color: var(--btn-hover-bg);
+}
+.folder-chip.sort-target {
+  background: #000;
+  border-color: #000;
+  color: #fff;
+}
+.folder-chip.sort-target .folder-count {
+  background: rgba(255, 255, 255, 0.25);
+}
+
 .song-list {
   margin: 0;
 }
@@ -693,6 +825,9 @@ onMounted(async () => {
   gap: 0;
   position: relative;
   z-index: 0;
+  /* 屏外行跳过布局/绘制（等效轻量虚拟滚动），减少长列表开销 */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 52px;
 }
 
 .song-item::before {
@@ -712,18 +847,6 @@ onMounted(async () => {
 
 .song-item:hover {
   color: var(--btn-hover-text);
-}
-.song-item.sort-mode {
-  cursor: grab;
-}
-.song-item.sort-mode:active {
-  cursor: grabbing;
-}
-.song-item.dragging {
-  opacity: 0.35;
-}
-.song-item.drag-over {
-  border-top: 2px solid var(--btn-hover-bg);
 }
 .song-item:hover .song-index,
 .song-item:hover .song-name,
@@ -1077,6 +1200,9 @@ onMounted(async () => {
   opacity: 0; transform: translateX(-20px);
   transition: opacity var(--motion-duration-fast) var(--motion-easing-standard),
               transform var(--motion-duration-fast) var(--motion-easing-standard);
+  /* 屏外卡片跳过布局/绘制 */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 160px;
 }
 .entered .view-card { opacity: 1; transform: translateX(0); }
 .view-card:hover { background: var(--btn-hover-bg); color: var(--btn-hover-text); transition: background var(--motion-duration-fast), color var(--motion-duration-fast) !important; }

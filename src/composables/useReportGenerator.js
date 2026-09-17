@@ -1,7 +1,21 @@
 // 听歌报告生成器 — Canvas 2D，3x 分辨率，黑白极简风
-import { K_REPORT_PATH } from '@/constants/storage-keys'
+import { REPORT_TYPES, isReportType, getPlayHistory, getReportRangeStart, countPlaysSince, buildReportSongs, reportSubtitle, reportFilename } from '@/utils/report'
 
 const SCALE = 3
+
+export { getReportSavePath, setReportSavePath } from '@/utils/report'
+
+// Blob → Base64（分块，避免 String.fromCharCode(...大数组) 触发 RangeError）
+export async function blobToBase64(blob) {
+  const arrayBuffer = await blob.arrayBuffer()
+  const uint8 = new Uint8Array(arrayBuffer)
+  let binary = ''
+  const CHUNK = 0x8000
+  for (let i = 0; i < uint8.length; i += CHUNK) {
+    binary += String.fromCharCode.apply(null, uint8.subarray(i, i + CHUNK))
+  }
+  return btoa(binary)
+}
 
 export async function generateReportBlob(songs, isDarkMode, title, subtitle, topN = 10) {
   const ranked = songs
@@ -107,26 +121,18 @@ export async function generateReportBlob(songs, isDarkMode, title, subtitle, top
   return new Promise(resolve => canvas.toBlob(blob => resolve(blob), 'image/png'))
 }
 
-export function checkScheduledReports(songs, isDarkMode) {
-  const now = new Date()
-  const d = now.getDay(), dm = now.getDate(), m = now.getMonth(), y = now.getFullYear()
-  const tasks = []
-  if (d === 1) {
-    const lm = new Date(now); lm.setDate(now.getDate() - 7)
-    const ls = new Date(now); ls.setDate(now.getDate() - 1)
-    tasks.push({ title: 'Rhizome \u5468\u62a5', subtitle: `${lm.getMonth() + 1}/${lm.getDate()} - ${ls.getMonth() + 1}/${ls.getDate()}, ${y}`,
-      filename: `rhizome-weekly-${y}-${String(m + 1).padStart(2, '0')}-W${Math.ceil(dm / 7)}.png` })
-  }
-  if (dm === 1) {
-    const mn = ['1\u6708','2\u6708','3\u6708','4\u6708','5\u6708','6\u6708','7\u6708','8\u6708','9\u6708','10\u6708','11\u6708','12\u6708']
-    const lm = m === 0 ? 11 : m - 1, lmy = m === 0 ? y - 1 : y
-    tasks.push({ title: 'Rhizome \u6708\u62a5', subtitle: `${mn[lm]}, ${lmy}`, filename: `rhizome-monthly-${lmy}-${String(lm + 1).padStart(2, '0')}.png` })
-  }
-  if (m === 0 && dm === 1) {
-    tasks.push({ title: 'Rhizome \u5e74\u62a5', subtitle: `${y - 1} \u5e74\u5ea6`, filename: `rhizome-yearly-${y - 1}.png` })
-  }
-  return tasks.map(t => ({ ...t, songs, isDarkMode }))
-}
+// 生成指定类型（日/周/月/年）的报告：按时间范围统计播放记录 → 生成 PNG
+// 返回 { blob, filename }；范围内无播放数据时返回 null
+// date 可传入任意日期，用于补历史周期（默认当前时间）
+export async function generateReportForType(type, songList, isDarkMode, topN = 10, date = new Date()) {
+  if (!isReportType(type)) return null
+  const from = getReportRangeStart(type, date)
+  const countMap = countPlaysSince(getPlayHistory(), from)
+  const songs = buildReportSongs(songList, countMap)
+  if (!songs.length) return null
 
-export function getReportSavePath() { return localStorage.getItem(K_REPORT_PATH) || '' }
-export function setReportSavePath(p) { localStorage.setItem(K_REPORT_PATH, p) }
+  const t = REPORT_TYPES.find(x => x.key === type)
+  const blob = await generateReportBlob(songs, isDarkMode, t.title, reportSubtitle(type, date), topN)
+  if (!blob) return null
+  return { blob, filename: reportFilename(type, date) }
+}

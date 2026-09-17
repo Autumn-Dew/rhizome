@@ -4,7 +4,7 @@
 
 ## 项目定位
 
-Rhizome v1.0.8 是一个 **Windows 本地单机音乐播放器**（Electron 桌面应用），主打无损音频、桌面歌词与频谱可视化。
+Rhizome v1.0.82 是一个 **Windows 本地单机音乐播放器**（Electron 桌面应用），主打无损音频、桌面歌词与频谱可视化。
 
 - 无后端、无数据库、无远程 API、无网络上传下载功能（重构审计已否定旧任务书中的 Spring Boot 描述）。
 - 数据全部落在本机：localStorage（偏好/历史/歌单）+ `%APPDATA%/Rhizome/data/*.json`（音乐路径、桌面歌词位置/锁定）。

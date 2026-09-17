@@ -18,7 +18,7 @@
       <div class="playlist-item" v-for="(item, idx) in playlistList" :key="item.localId" :style="staggerStyle(idx)" @dblclick="goToPlaylistDetail(item)">
         <div class="playlist-index">{{ playlistList.indexOf(item) + 1 }}</div>
         <div class="playlist-cover" @click="goToPlaylistDetail(item)">
-          <img v-if="item.coverUrl" :src="item.coverUrl" alt="cover" />
+          <img v-if="item.coverUrl" :src="item.coverUrl" alt="cover" loading="lazy" decoding="async" />
           <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor">
             <path d="M4 4h16v16H4V4z M8 8h8M8 12h6M8 16h4" stroke-width="2"/>
           </svg>
@@ -61,6 +61,7 @@
               :style="pulseFor(item.localId)"
               @click="handleDeleteClick(item)"
               :title="confirmHint(item.localId) || '删除'"
+              data-charge-sound
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke-width="2"/>
@@ -350,6 +351,8 @@ onMounted(async () => { if (!localMusicStore.loaded && !localMusicStore.loading)
   display: flex; align-items: center; padding: 0 12px; height: 52px;
   border-bottom: 1px solid var(--border-color);
   position: relative; z-index: 0;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 52px;
 }
 .playlist-item::before {
   content: ''; position: absolute; inset: 0; z-index: -1;

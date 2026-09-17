@@ -15,7 +15,7 @@
           <span>播放记录报告</span>
         </div>
         <div class="report-types">
-          <button v-for="t in reportTypes" :key="t.key" class="report-type-btn" :class="{ active: reportType === t.key }" @click="reportType = reportType === t.key ? null : t.key">
+          <button v-for="t in reportTypes" :key="t.key" class="report-type-btn" :class="{ active: reportType === t.key }" @click="reportType = t.key">
             <span class="report-type-icon">{{ t.icon }}</span>
             <span class="report-type-label">{{ t.label }}</span>
           </button>
@@ -28,14 +28,14 @@
         </div>
         <button class="report-generate-btn" @click="handleGenerateReport" :disabled="reportStats.total === 0">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          {{ reportType ? '生成' + (reportTypes.find(t => t.key === reportType)?.label || '') : '生成今日报告' }}
+          {{ '生成' + (reportTypes.find(t => t.key === reportType)?.label || '报告') }}
         </button>
       </div>
 
       <div class="sp-actions">
         <button class="sp-action-btn" @click="handleBackup">保存数据（备份）</button>
         <button class="sp-action-btn" @click="handleRestore">加载数据（恢复）</button>
-        <button class="sp-action-btn sp-danger" @click="handleClearAll">清除所有数据</button>
+        <button class="sp-action-btn sp-danger" @click="handleClearAll" data-charge-sound>清除所有数据</button>
         <button class="sp-action-btn" @click="showAbout = true">关于 Rhizome</button>
       </div>
       </div>
@@ -127,6 +127,20 @@
           </span>
         </div>
         <div class="ss-row">
+          <span class="ss-cell-label">音效</span>
+          <span class="ss-cell-value">
+            <button class="sp-btn toggle-btn" :class="{ active: soundEnabled }" @click="toggleSound">{{ soundEnabled ? 'ON' : 'OFF' }}</button>
+          </span>
+        </div>
+        <div class="ss-row">
+          <span class="ss-cell-label">音效音量</span>
+          <span class="ss-cell-value">
+            <button class="sp-btn" @click="changeSoundVolume(-0.1)" :disabled="soundVolume <= 0">−</button>
+            <span class="sp-value">{{ Math.round(soundVolume * 100) }}%</span>
+            <button class="sp-btn" @click="changeSoundVolume(0.1)" :disabled="soundVolume >= 1">+</button>
+          </span>
+        </div>
+        <div class="ss-row">
           <span class="ss-cell-label">删除确认次数</span>
           <span class="ss-cell-value">
             <button v-for="n in DELETE_CONFIRM_OPTIONS" :key="n" class="sp-btn toggle-btn" :class="{ active: requiredCount === n }" @click="setRequiredCount(n)">{{ n }}</button>
@@ -215,14 +229,16 @@ import { useLocalMusicStore } from '@/stores/localMusicStore'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useAudioDevice } from '@/composables/useAudioDevice'
 import { isWeeklyEnabled, setWeeklyEnabled, checkAndGenerateWeekly } from '@/composables/useWeeklyPlaylists'
-import { generateReportBlob } from '@/composables/useReportGenerator'
+import { generateReportForType } from '@/composables/useReportGenerator'
+import { REPORT_TYPES, getReportRangeStart, countPlaysSince, getPlayHistory } from '@/utils/report'
 import { getActionDefs, getShortcutConfig, comboLabel, updateShortcut, resetShortcuts } from '@/composables/useShortcuts'
 import { useActionChain, ACTION_TYPES } from '@/composables/useActionChain'
 import { useDeleteConfirm } from '@/composables/useDeleteConfirm'
 import { useLyricOffset } from '@/composables/useLyricOffset'
 import AboutModal from '@/components/common/AboutModal.vue'
-import { K_LYRIC_SIZE, K_LYRIC_ALIGN, K_REPORT_PATH, K_PLAY_COUNT_REAL, K_DESKTOP_LYRICS_BG } from '@/constants/storage-keys'
+import { K_LYRIC_SIZE, K_LYRIC_ALIGN, K_REPORT_PATH, K_DESKTOP_LYRICS_BG } from '@/constants/storage-keys'
 import { idleTimeoutSec, setIdleTimeout } from '@/composables/useIdleTimeout'
+import { playShortcutSound, isSoundEnabled, setSoundEnabled, getSoundVolume, setSoundVolume } from '@/composables/useSound'
 
 const { themeClass } = useGlobalTheme()
 const localStore = useLocalMusicStore()
@@ -268,15 +284,14 @@ const lyricAlign = ref(localStorage.getItem(K_LYRIC_ALIGN) || 'center')
 const autoLaunch = ref(false)
 const weeklyEnabled = ref(isWeeklyEnabled())
 const reportPath = ref(localStorage.getItem(K_REPORT_PATH) || '')
-const reportType = ref(null)
-const reportTypes = [
-  { key: 'weekly', label: '周报', icon: 'W' },
-  { key: 'monthly', label: '月报', icon: 'M' },
-  { key: 'yearly', label: '年报', icon: 'Y' },
-]
+const soundEnabled = ref(isSoundEnabled())
+const soundVolume = ref(getSoundVolume())
+const reportType = ref('daily')
+const reportTypes = REPORT_TYPES.map(t => ({ key: t.key, label: t.label, icon: t.label.charAt(0) }))
 const reportStats = computed(() => {
-  const map = JSON.parse(localStorage.getItem(K_PLAY_COUNT_REAL) || '{}')
-  const entries = Object.entries(map)
+  const from = getReportRangeStart(reportType.value)
+  const countMap = countPlaysSince(getPlayHistory(), from)
+  const entries = Object.entries(countMap)
   return {
     total: entries.reduce((s, [, c]) => s + c, 0),
     songs: entries.length,
@@ -332,6 +347,15 @@ async function selectReportDir() {
   if (dir) { reportPath.value = dir; localStorage.setItem(K_REPORT_PATH, dir) }
 }
 
+function toggleSound() {
+  soundEnabled.value = !soundEnabled.value
+  setSoundEnabled(soundEnabled.value)
+}
+function changeSoundVolume(d) {
+  soundVolume.value = Math.max(0, Math.min(1, Math.round((soundVolume.value + d) * 100) / 100))
+  setSoundVolume(soundVolume.value)
+}
+
 function resetSC() {
   resetShortcuts()
   shortcutConfig.value = getShortcutConfig()
@@ -366,6 +390,7 @@ function onGlobalKey(e) {
   const num = parseInt(e.key)
   if (num >= 1 && num <= 5 && acChains.value[num - 1]) {
     e.preventDefault()
+    playShortcutSound()
     acExecute(acChains.value[num - 1], playerStore)
   }
 }
@@ -383,31 +408,15 @@ async function handleRestore() {
   setTimeout(() => msg.value = '', 2000)
 }
 async function handleGenerateReport() {
-  const songs = localStore.songList.map(s => {
-    const map = JSON.parse(localStorage.getItem(K_PLAY_COUNT_REAL) || '{}')
-    return { ...s, playCount: map[s.path] || 0 }
-  })
-  const now = new Date()
-  let title, subtitle, fn
-  if (reportType.value) {
-    const tMap = { weekly: ['Rhizome 周报', '本周'], monthly: ['Rhizome 月报', '本月'], yearly: ['Rhizome 年报', '本年度'] }
-    const [t, d] = tMap[reportType.value]
-    title = t; subtitle = d
-    const extMap = { weekly: 'W', monthly: 'M', yearly: 'Y' }
-    fn = `rhizome-${extMap[reportType.value]}-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.png`
-  } else {
-    title = 'Rhizome 今日报告'
-    subtitle = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')}`
-    fn = `rhizome-daily-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.png`
-  }
-  const blob = await generateReportBlob(songs, themeClass.value === 'theme-dark', title, subtitle)
-  if (!blob) { msg.value = '无播放数据可生成'; setTimeout(() => msg.value = '', 1500); return }
+  const result = await generateReportForType(reportType.value, localStore.songList, themeClass.value === 'theme-dark')
+  if (!result) { msg.value = '无播放数据可生成'; setTimeout(() => msg.value = '', 1500); return }
   const dir = reportPath.value
   if (!dir) { msg.value = '请先设置报告路径'; setTimeout(() => msg.value = '', 1500); return }
+  const { blob, filename } = result
   const reader = new FileReader()
   reader.onload = async () => {
     const b64 = reader.result.split(',')[1]
-    const ok = await window.electron?.saveReportFile?.(dir, fn, b64)
+    const ok = await window.electron?.saveReportFile?.(dir, filename, b64)
     msg.value = ok ? '报告已保存' : '保存失败'
     setTimeout(() => msg.value = '', 2000)
     if (ok) window.electron?.openPath?.(dir)

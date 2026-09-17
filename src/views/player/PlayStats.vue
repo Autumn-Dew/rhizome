@@ -36,9 +36,10 @@
       </div>
       <div class="song-list">
         <div class="song-item" v-for="(item, idx) in songTop" :key="idx" :style="staggerStyle(idx)" @dblclick="playSong(item)" :class="{ playing: isCurrentSong(item) }">
+          <span v-if="barColor(item)" class="pc-bar" :style="{ background: barColor(item) }"></span>
           <div class="song-index">{{ idx + 1 }}</div>
           <div class="song-cover" v-if="item.coverUrl">
-            <img :src="item.coverUrl" alt="cover" />
+            <img :src="item.coverUrl" alt="cover" loading="lazy" decoding="async" />
           </div>
           <div class="song-cover" v-else>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18V5l12-2v13" stroke-width="2"/></svg>
@@ -102,6 +103,7 @@ import { ElMessage } from "element-plus";
 import { K_PLAY_COUNT_REAL } from "@/constants/storage-keys";
 import { formatDuration } from '@/utils/format'
 import { useSongList } from "@/composables/useSongList";
+import { usePlayCountBar } from '@/composables/usePlayCountBar'
 
 const playerStore = usePlayerStore();
 const localMusicStore = useLocalMusicStore();
@@ -111,6 +113,7 @@ const stats = ref({ totalPlays: 0, totalSongs: 0, totalTime: 0, topArtist: "æœªç
 const songTop = ref([]);
 const artistTop = ref([]);
 const { entered, staggerStyle } = usePageEnter();
+const { barColor } = usePlayCountBar()
 
 const { scrollToCurrent } = useSongList(ref([]), () => {})
 
@@ -198,6 +201,8 @@ onMounted(() => {
   height: 48px; display: flex; align-items: center; padding: 0 12px;
   border-bottom: 1px solid var(--border-color);
   position: relative; z-index: 0;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 48px;
 }
 .song-item::before {
   content: ''; position: absolute; inset: 0; z-index: -1;
