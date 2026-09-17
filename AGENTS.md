@@ -1,6 +1,6 @@
 # Rhizome Agent Guide
 
-Rhizome v1.0.8：Windows 本地单机音乐播放器（Electron 桌面应用）。无后端、无数据库、无远程 API、无网络功能。
+Rhizome v1.0.82：Windows 本地单机音乐播放器（Electron 桌面应用）。无后端、无数据库、无远程 API、无网络功能。
 重构总纲：`docs/refactoring/master-plan.md`（一切改动的依据）；当前进度：`.ai/current-state.md`。
 
 ## 项目架构（现状）
