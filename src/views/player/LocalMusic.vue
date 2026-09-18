@@ -5,10 +5,16 @@
         <h2>本地音乐</h2>
         <p class="desc">扫描并管理本地音频文件</p>
       </div>
-      <span class="view-tabs">
-        <button class="tl-entry-btn" :class="{ active: viewMode === 'folders' }" @click="viewMode = 'folders'">文件夹</button>
-        <button class="tl-entry-btn" :class="{ active: viewMode === 'albums' }" @click="viewMode = 'albums'">专辑</button>
-        <button class="tl-entry-btn" :class="{ active: viewMode === 'artists' }" @click="viewMode = 'artists'">艺人</button>
+      <span class="header-controls">
+        <span class="sort-controls">
+          <button class="tl-entry-btn" @click="cycleSortField" :title="'按' + sortFieldLabel + '排序'">{{ sortFieldLabel }}</button>
+          <button class="tl-entry-btn" :disabled="isDefaultSort" @click="toggleSortDir" :title="isDefaultSort ? '默认排序无方向' : sortDirLabel + '（点击切换）'">{{ isDefaultSort ? '⇅' : (sortDir === 'asc' ? '↑' : '↓') }}</button>
+        </span>
+        <span class="view-tabs">
+          <button class="tl-entry-btn" :class="{ active: viewMode === 'folders' }" @click="viewMode = 'folders'">文件夹</button>
+          <button class="tl-entry-btn" :class="{ active: viewMode === 'albums' }" @click="viewMode = 'albums'">专辑</button>
+          <button class="tl-entry-btn" :class="{ active: viewMode === 'artists' }" @click="viewMode = 'artists'">艺人</button>
+        </span>
       </span>
     </div>
 
@@ -31,7 +37,7 @@
         </svg>
         <span>{{ multiMode ? '退出多选' : '多选' }}</span>
       </button>
-      <button class="rc-global-btn" @click="toggleSortMode" :class="{ active: sortMode }" :disabled="viewMode !== 'folders'">
+      <button class="rc-global-btn" @click="toggleSortMode" :class="{ active: sortMode }" :disabled="viewMode !== 'folders' || !isDefaultSort">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M4 8h16M4 16h16" stroke-linecap="round"/>
           <path d="M8 4l-4 4 4 4M16 20l4-4-4-4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -44,7 +50,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
           <span>加入歌单</span>
         </button>
-        <button class="rc-global-btn" :class="{ 'delete-warning': confirmHint('__batch__') !== '' }" :style="pulseFor('__batch__')" @click="batchDelete" :disabled="!selectedSet.size" :title="confirmHint('__batch__') || '批量删除'" data-charge-sound>
+        <button class="rc-global-btn" :class="{ 'delete-warning': confirmHint('__batch__') !== '' }" :style="pulseFor('__batch__')" @click.stop="batchDelete" :disabled="!selectedSet.size" :title="confirmHint('__batch__') || '批量删除'" data-charge-sound>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2M10 11v6M14 11v6M5 6h14v14a2 2 0 012 2H7a2 2 0 01-2-2V6z" stroke-linecap="round"/></svg>
           <span>删除</span>
         </button>
@@ -84,7 +90,7 @@
           <span>全部 ({{ musicStore.songList.length }})</span>
         </button>
         <button
-            v-for="(folder, idx) in musicStore.folders"
+            v-for="(folder, idx) in displayFolders"
             :key="folder.path"
             class="folder-chip"
             :class="{
@@ -155,7 +161,7 @@
             @dblclick.stop
           />
         </div>
-        <div class="song-index" v-else>{{ idx + 1 }}</div>
+        <div class="song-index" v-else>{{ showPlayCountInIndex ? (playCountMap[item.path] || 0) : (idx + 1) }}</div>
         <div class="song-cover" v-if="item.coverUrl">
           <img :src="item.coverUrl" alt="cover" loading="lazy" decoding="async" />
         </div>
@@ -176,7 +182,7 @@
               <path d="M5 3l14 9-14 9V3z" stroke-width="2"/>
             </svg>
           </button>
-          <button class="song-btn" :class="{ 'delete-warning': confirmHint(item.path) !== '' }" :style="pulseFor(item.path)" @click="deleteSong(item)" :title="confirmHint(item.path) || '删除'" data-charge-sound>
+          <button class="song-btn" :class="{ 'delete-warning': confirmHint(item.path) !== '' }" :style="pulseFor(item.path)" @click.stop="deleteSong(item)" @dblclick.stop :title="confirmHint(item.path) || '删除'" data-charge-sound>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path
                   d="M3 6h18 M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2 M10 11v6 M14 11v6 M5 6h14v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6z"
@@ -232,7 +238,7 @@
 export default { name: 'LocalMusic' }
 </script>
 <script setup>
-import { computed, ref, onMounted, toRef, watch, nextTick } from "vue";
+import { computed, ref, onMounted, onActivated, watch, nextTick } from "vue";
 import { useRouter } from 'vue-router'
 import { useGlobalTheme } from "@/composables/useGlobalTheme";
 import { usePageEnter } from "@/composables/usePageEnter";
@@ -241,12 +247,13 @@ import { useLocalMusicStore } from "@/stores/localMusicStore";
 import { useCurrentSongHighlight } from "@/composables/useCurrentSongHighlight";
 import { useSongList } from "@/composables/useSongList";
 import FavoriteButton from "@/components/common/FavoriteButton.vue";
-import { K_LOCAL_PLAYLISTS, K_PLAYLIST_SONGS } from "@/constants/storage-keys";
+import { K_LOCAL_PLAYLISTS, K_PLAYLIST_SONGS, K_SORT_PREF, K_SORT_ORDERS, K_PLAY_COUNT_REAL } from "@/constants/storage-keys";
 import { useDeleteConfirm } from '@/composables/useDeleteConfirm'
 import { formatTime } from '@/utils/format'
 import { createSongFromMeta } from '@/utils/song-factory'
 import { usePlayCountBar } from '@/composables/usePlayCountBar'
 import { playHoldSound } from '@/composables/useSound'
+import { sortItems, applyPathOrder, SORT_FIELDS, SORT_FIELD_LABELS } from '@/utils/sort'
 
 const { themeClass } = useGlobalTheme();
 const router = useRouter()
@@ -259,38 +266,116 @@ const { barColor } = usePlayCountBar()
 const viewMode = ref('folders')
 const activeAlbum = ref(null)
 const activeArtist = ref(null)
+
+// ── 排序偏好（默认 / 名称 / 播放次数 / 播放时间 + 升降序，三视图共用） ──
+function readSortPref() {
+  try {
+    const p = JSON.parse(localStorage.getItem(K_SORT_PREF) || '{}')
+    return {
+      field: SORT_FIELDS.includes(p.field) ? p.field : 'default',
+      dir: p.dir === 'desc' ? 'desc' : 'asc',
+    }
+  } catch { return { field: 'default', dir: 'asc' } }
+}
+const _sp = readSortPref()
+const sortField = ref(_sp.field)
+const sortDir = ref(_sp.dir)
+function persistSortPref() {
+  localStorage.setItem(K_SORT_PREF, JSON.stringify({ field: sortField.value, dir: sortDir.value }))
+}
+// 排序方式按钮：循环切换 默认 → 名称 → 播放次数 → 播放时间
+function cycleSortField() {
+  // 切换排序方式前先退出进行中的手动排序，避免文件夹索引错位 / 序号输入失效
+  if (folderSortMode.value) exitFolderSort()
+  if (sortMode.value) toggleSortMode()
+  const i = SORT_FIELDS.indexOf(sortField.value)
+  sortField.value = SORT_FIELDS[(i + 1) % SORT_FIELDS.length]
+  persistSortPref()
+}
+// 升降序按钮：升降切换
+function toggleSortDir() {
+  sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  persistSortPref()
+}
+const sortFieldLabel = computed(() => SORT_FIELD_LABELS[sortField.value] || '默认')
+const sortDirLabel = computed(() => (sortDir.value === 'asc' ? '升序' : '降序'))
+// 默认排序（按添加顺序）不支持方向，且不支持手动排序
+const isDefaultSort = computed(() => sortField.value === 'default')
+// 播放次数排序时，序号列覆盖显示该歌播放次数
+const showPlayCountInIndex = computed(() => sortField.value === 'plays' && !sortMode.value)
+
+// ── 每作用域手动手动排序顺序（文件夹独立于「全部」） ──
+function readSortOrders() {
+  try { return JSON.parse(localStorage.getItem(K_SORT_ORDERS) || '{}') } catch { return {} }
+}
+const sortOrders = ref(readSortOrders())
+function persistSortOrders() {
+  localStorage.setItem(K_SORT_ORDERS, JSON.stringify(sortOrders.value))
+}
+
+// ── 播放次数映射（供排序取值） ──
+const playCountMap = computed(() => {
+  try { return JSON.parse(localStorage.getItem(K_PLAY_COUNT_REAL) || '{}') } catch { return {} }
+})
+// 歌曲排序取值
+function songSortValue(s) {
+  if (sortField.value === 'plays') return playCountMap.value[s.path] || 0
+  if (sortField.value === 'recent') return s.duration || 0 // recent = 歌曲时长
+  return s.name || ''
+}
+// 分组（专辑/艺人）排序取值
+function groupSortValue(g) {
+  if (sortField.value === 'plays') return g.plays
+  if (sortField.value === 'recent') return g.totalDuration
+  return g.name || ''
+}
 function goAlbum(name) { router.push(`/player/album/album/${encodeURIComponent(name)}`) }
 function goArtist(name) { router.push(`/player/album/artist/${encodeURIComponent(name)}`) }
 
 watch(viewMode, () => { exitFolderSort(); resetEnter(); nextTick(() => { triggerEnter() }) })
 
+// keep-alive 缓存后返回时，重读可能已在设置页修改过的排序设置
+onActivated(() => {
+  const sp = readSortPref()
+  sortField.value = sp.field
+  sortDir.value = sp.dir
+  sortOrders.value = readSortOrders()
+})
+
+// 文件夹 chips 顺序固定（与排序方式无关，仅支持默认下的长按手动排序）
+const displayFolders = computed(() => musicStore.folders)
+
 const albums = computed(() => {
   const map = {}
   for (const s of musicStore.songList) {
     const key = s.album || '未知专辑'
-    if (!map[key]) map[key] = { name: key, coverUrl: s.coverUrl, count: 0 }
+    if (!map[key]) map[key] = { name: key, coverUrl: s.coverUrl, count: 0, plays: 0, totalDuration: 0 }
     map[key].count++
+    map[key].plays += playCountMap.value[s.path] || 0
+    map[key].totalDuration += s.duration || 0
   }
   let list = Object.values(map)
   if (viewMode.value === 'albums' && searchQuery.value.trim()) {
     const q = searchQuery.value.trim().toLowerCase()
     list = list.filter(a => a.name.toLowerCase().includes(q))
   }
-  return list.sort((a, b) => a.name.localeCompare(b.name, 'zh'))
+  return isDefaultSort.value ? list : sortItems(list, groupSortValue, sortDir.value)
 })
 const artists = computed(() => {
   const map = {}
   for (const s of musicStore.songList) {
     const key = s.singer || '未知歌手'
-    if (!map[key]) map[key] = { name: key, coverUrl: s.coverUrl, count: 0 }
+    if (!map[key]) map[key] = { name: key, coverUrl: s.coverUrl, count: 0, plays: 0, totalDuration: 0 }
     map[key].count++
+    map[key].plays += playCountMap.value[s.path] || 0
+    map[key].totalDuration += s.duration || 0
   }
   let list = Object.values(map)
   if (viewMode.value === 'artists' && searchQuery.value.trim()) {
     const q = searchQuery.value.trim().toLowerCase()
     list = list.filter(a => a.name.toLowerCase().includes(q))
   }
-  return list.sort((a, b) => a.name.localeCompare(b.name, 'zh'))
+  return isDefaultSort.value ? list : sortItems(list, groupSortValue, sortDir.value)
 })
 const albumSongs = computed(() => {
   if (!activeAlbum.value) return []
@@ -301,16 +386,26 @@ const artistSongs = computed(() => {
   return musicStore.songList.filter(s => (s.singer || '未知歌手') === activeArtist.value)
 })
 
-const songListRef = toRef(musicStore, 'songList')
+const activeFolder = ref(null);
+// 排序作用域：当前文件夹路径，或 '__all__'（全部）
+const scopeKey = computed(() => activeFolder.value ?? '__all__')
+// 作用域内的歌（仅按文件夹过滤，不含搜索），作为序号排序的落点
+const scopeSongs = computed(() => {
+  if (!activeFolder.value) return musicStore.songList
+  return musicStore.songList.filter(s => s.path.startsWith(activeFolder.value))
+})
+
 const {
   sortMode, sortOrderMap,
   toggleSortMode, onSortOrderInput,
   multiMode, selectedSet,
   toggleMultiMode, toggleSelect, isAllSelectedFn, toggleSelectAllFn,
   cancelMulti, scrollToCurrent,
-} = useSongList(songListRef, () => musicStore._saveCurrentPaths())
-
-const activeFolder = ref(null);
+} = useSongList(scopeSongs, null, (newList) => {
+  // 序号排序结果按作用域保存，文件夹与「全部」相互独立
+  sortOrders.value = { ...sortOrders.value, [scopeKey.value]: newList.map(s => s.path) }
+  persistSortOrders()
+})
 const { entered, staggerStyle, triggerEnter, resetEnter } = usePageEnter();
 const folderStripRef = ref(null);
 
@@ -344,6 +439,8 @@ function clearFolderHoverTimer() {
 
 function onFolderChipMouseDown(idx) {
   if (folderSortMode.value) return
+  // 手动排序仅在「默认」排序方式下可用（预设排序方式有自己的处理逻辑）
+  if (!isDefaultSort.value) return
   folderHoldSoundFired = false
   clearFolderHoldTimers()
   // 长按 1s：播放提示音效
@@ -515,10 +612,7 @@ const batchAddToPlaylist = () => {
 };
 
 const filteredSongs = computed(() => {
-  let list = musicStore.songList
-  if (activeFolder.value) {
-    list = list.filter(s => s.path.startsWith(activeFolder.value))
-  }
+  let list = scopeSongs.value
   if (searchQuery.value.trim()) {
     const q = searchQuery.value.trim().toLowerCase()
     list = list.filter(s =>
@@ -529,7 +623,13 @@ const filteredSongs = computed(() => {
       (s.path || '').toLowerCase().includes(q)
     )
   }
-  return list
+  // 默认排序：按添加顺序，可被该作用域的手动序号排序覆盖；其它方式按所选字段排序
+  if (isDefaultSort.value) {
+    const order = sortOrders.value[scopeKey.value]
+    if (order && order.length) return applyPathOrder(list, order)
+    return list
+  }
+  return sortItems(list, songSortValue, sortDir.value)
 });
 
 const handleAddMusic = async () => {
@@ -973,6 +1073,34 @@ onMounted(async () => {
   color: var(--text-primary); cursor: pointer; font-size: 12px;
 }
 
+/* ── 加入歌单弹窗：四角蝙蝠 ── */
+html[data-motion="ornate"] .playlist-select-popup { position: relative; }
+html[data-motion="ornate"] .playlist-select-popup::after {
+  content: '';
+  position: absolute; inset: 0;
+  pointer-events: none;
+  background: var(--border-color);
+  -webkit-mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(315 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left top / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(45 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right top / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(225 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left bottom / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(135 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right bottom / 16px 16px no-repeat;
+  mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(315 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left top / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(45 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right top / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(225 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left bottom / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(135 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right bottom / 16px 16px no-repeat;
+  opacity: 0.6;
+  animation: lm-bat2 5s ease-in-out infinite;
+}
+@keyframes lm-bat2 {
+  0%, 100% { opacity: 0.7;  background-color: var(--border-color); }
+  20%      { opacity: 0.18; background-color: var(--border-color); }
+  40%      { opacity: 0.85; background-color: #c0392b; }
+  62%      { opacity: 0.25; background-color: var(--border-color); }
+  82%      { opacity: 0.9;  background-color: #c0392b; }
+}
+
 .song-item.selected {
   background: var(--btn-hover-bg);
   color: var(--btn-hover-text);
@@ -1155,6 +1283,15 @@ onMounted(async () => {
 }
 .entered .song-item { opacity: 1; transform: translateX(0); }
 
+/* ornate：列表项从中间向两侧浮现（替代 classic 的左侧滑入） */
+html[data-motion="ornate"] .song-item {
+  opacity: 0; transform: scaleX(0);
+  transform-origin: center;
+  transition: opacity var(--motion-duration-fast) var(--motion-easing-standard),
+              transform var(--motion-duration-slow) var(--motion-easing-enter);
+}
+html[data-motion="ornate"] .entered .song-item { opacity: 1; transform: scaleX(1); }
+
 /* 分隔线从中点向两端生长 */
 .local-header, .local-toolbar, .folder-strip { position: relative; }
 .local-header::after, .local-toolbar::after, .folder-strip::after {
@@ -1178,6 +1315,8 @@ onMounted(async () => {
 }
 .tl-entry-btn:hover { background: var(--btn-hover-bg); color: var(--btn-hover-text); }
 .tl-entry-btn.active { background: var(--btn-hover-bg); color: var(--btn-hover-text); }
+.tl-entry-btn:disabled { opacity: .45; cursor: default; }
+.tl-entry-btn:disabled:hover { background: var(--bg-secondary); color: var(--text-primary); }
 .view-tabs { display: flex; gap: 0; }
 .view-tabs .tl-entry-btn:not(:first-child) { border-left: none; }
 .view-tabs .tl-entry-btn {
@@ -1188,6 +1327,18 @@ onMounted(async () => {
 .view-tabs .tl-entry-btn:nth-child(2) { transition-delay: 0.18s; }
 .view-tabs .tl-entry-btn:nth-child(3) { transition-delay: 0.22s; }
 .entered .view-tabs .tl-entry-btn { opacity: 1; transform: scaleX(1); }
+
+/* 排序控件（视图控件左侧：排序方式 + 升降序） */
+.header-controls { display: flex; align-items: center; gap: 12px; }
+.sort-controls { display: flex; gap: 0; }
+.sort-controls .tl-entry-btn:not(:first-child) { border-left: none; }
+.sort-controls .tl-entry-btn {
+  opacity: 0; transform: scaleX(0);
+  transition: opacity var(--motion-duration-micro) var(--motion-easing-ease), transform var(--motion-duration-btn-transform) var(--motion-easing-enter);
+}
+.sort-controls .tl-entry-btn:nth-child(1) { transition-delay: 0.06s; }
+.sort-controls .tl-entry-btn:nth-child(2) { transition-delay: 0.10s; }
+.entered .sort-controls .tl-entry-btn { opacity: 1; transform: scaleX(1); }
 
 /* 专辑/艺人网格 */
 .view-grid {
@@ -1229,4 +1380,235 @@ onMounted(async () => {
 }
 .view-back svg { width: 16px; height: 16px; }
 .view-back:hover { background: var(--bg-secondary); }
+/* ══════════════════════════════════════════════════════════════
+   Ornate（华丽方案）页面装饰 —— 沿用设置页风格
+   （本页头部为「左标题 + 右控制」布局，故不加标题居中）
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── 鸢尾花纹（明暗两套） ── */
+html[data-motion="ornate"] .local-music {
+  --lm-deco: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='%23000'%3E%3Cpath d='M50 4 C45 20 37 28 26 32 C17 36 13 45 16 53 C19 61 28 64 34 61 C27 57 25 50 29 45 C33 40 42 43 46 52 C48 57 49 63 50 70 C51 63 52 57 54 52 C58 43 67 40 71 45 C75 50 73 57 66 61 C72 64 81 61 84 53 C87 45 83 36 74 32 C63 28 55 20 50 4 Z'/%3E%3Crect x='26' y='74' width='48' height='9'/%3E%3C/g%3E%3C/svg%3E");
+}
+html[data-motion="ornate"] .local-music.theme-dark {
+  --lm-deco: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='%23fff'%3E%3Cpath d='M50 4 C45 20 37 28 26 32 C17 36 13 45 16 53 C19 61 28 64 34 61 C27 57 25 50 29 45 C33 40 42 43 46 52 C48 57 49 63 50 70 C51 63 52 57 54 52 C58 43 67 40 71 45 C75 50 73 57 66 61 C72 64 81 61 84 53 C87 45 83 36 74 32 C63 28 55 20 50 4 Z'/%3E%3Crect x='26' y='74' width='48' height='9'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* ── 页面头：外蕾丝 + 两侧鸢尾 ── */
+html[data-motion="ornate"] .local-header { position: relative; }
+html[data-motion="ornate"] .local-header::before {
+  content: '';
+  position: absolute; inset: 6px;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(90deg, var(--border-color) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(90deg, var(--border-color) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(0deg, var(--border-color) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(0deg, var(--border-color) 0 1px, transparent 1px 5px),
+    var(--lm-deco), var(--lm-deco), var(--lm-deco);
+  background-repeat: no-repeat;
+  background-size: 100% 3px, 100% 3px, 3px 100%, 3px 100%, 14px 14px, 14px 14px, 14px 14px;
+  background-position: 0 0, 0 100%, 0 0, 100% 0, 12px 20%, 12px 50%, 12px 80%;
+  opacity: 0;
+  animation: lm-lace 8s linear infinite;
+  transition: opacity 0.9s var(--motion-easing-standard) 0.3s;
+}
+html[data-motion="ornate"] .entered .local-header::before { opacity: 0.5; }
+/* 标题/副标题居中：三列 grid（左空 / 中标题 / 右控制）；
+   标题保持在文档流内，使页头高度与其它页面一致（不再绝对居中导致高度塌陷） */
+html[data-motion="ornate"] .local-header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+}
+html[data-motion="ornate"] .local-header > div { grid-column: 2; text-align: center; }
+html[data-motion="ornate"] .local-header h2 { text-align: center; letter-spacing: 2px; }
+html[data-motion="ornate"] .local-header .desc { text-align: center; }
+html[data-motion="ornate"] .local-header > .header-controls { grid-column: 3; justify-self: end; }
+@keyframes lm-lace {
+  0%   { background-position: 0 0, 0 100%, 0 0, 100% 0, 12px 20%, 12px 50%, 12px 80%; }
+  100% { background-position: 7px 0, -7px 100%, 0 -7px, 100% 7px, 12px 20%, 12px 50%, 12px 80%; }
+}
+
+/* 标题两侧对称点缀（与设置页一致：3 圆点 + 双短线 + 双小弧） */
+html[data-motion="ornate"] .local-header h2::before,
+html[data-motion="ornate"] .local-header h2::after {
+  content: '';
+  display: inline-block;
+  width: 92px; height: 14px;
+  vertical-align: middle;
+  margin: 0 14px;
+  opacity: 0;
+  transform: scaleX(0);
+  transform-origin: center;
+  background:
+    radial-gradient(circle, var(--border-color) 2px, transparent 2.5px) left center / 6px 6px no-repeat,
+    radial-gradient(circle, var(--border-color) 2px, transparent 2.5px) center center / 6px 6px no-repeat,
+    radial-gradient(circle, var(--border-color) 2px, transparent 2.5px) right center / 6px 6px no-repeat,
+    linear-gradient(90deg, var(--border-color), var(--border-color)) left 3px / 28px 1px no-repeat,
+    linear-gradient(90deg, var(--border-color), var(--border-color)) right 4px / 28px 1px no-repeat,
+    conic-gradient(from 200deg, var(--border-color) 0 50deg, transparent 50deg 360deg) 30px center / 12px 12px no-repeat,
+    conic-gradient(from 110deg, var(--border-color) 0 50deg, transparent 50deg 360deg) calc(100% - 30px) center / 12px 12px no-repeat;
+  transition: opacity 0.8s var(--motion-easing-standard) 0.4s,
+              transform 0.8s var(--motion-easing-enter) 0.4s;
+}
+html[data-motion="ornate"] .entered .local-header h2::before,
+html[data-motion="ornate"] .entered .local-header h2::after {
+  opacity: 0.75;
+  transform: scaleX(1);
+}
+
+/* ── 列表项：hover 单层红覆盖 + 两只白蝙蝠，自中间向两侧展开 ── */
+html[data-motion="ornate"] .song-item::before,
+html[data-motion="ornate"] .song-item:hover::before { display: none; }
+html[data-motion="ornate"] .song-item::after {
+  content: '';
+  position: absolute; inset: 0 -18px; z-index: -1;
+  pointer-events: none;
+  background-color: #c0392b;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23fff' transform='rotate(90 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23fff' transform='rotate(-90 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat, no-repeat;
+  background-position: left center, right center;
+  background-size: auto 100%, auto 100%;
+  clip-path: inset(0 50% 0 50%);
+  opacity: 0;
+  transition: opacity 0s, clip-path var(--motion-duration-glacial) var(--motion-easing-enter);
+}
+html[data-motion="ornate"] .song-item:hover::after {
+  opacity: 1;
+  clip-path: inset(0 0 0 0);
+}
+
+/* ── 文件夹芯片：轻内衬蕾丝 ── */
+html[data-motion="ornate"] .folder-chip { position: relative; }
+html[data-motion="ornate"] .folder-chip::before {
+  content: '';
+  position: absolute; inset: 2px;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(90deg, var(--border-color) 0 1px, transparent 1px 8px),
+    repeating-linear-gradient(90deg, var(--border-color) 0 1px, transparent 1px 8px),
+    repeating-linear-gradient(0deg, var(--border-color) 0 1px, transparent 1px 8px),
+    repeating-linear-gradient(0deg, var(--border-color) 0 1px, transparent 1px 8px);
+  background-repeat: no-repeat;
+  background-size: 100% 2px, 100% 2px, 2px 100%, 2px 100%;
+  background-position: 0 0, 0 100%, 0 0, 100% 0;
+  opacity: 0.35;
+}
+
+/* ── 按钮：hover 反色 + 四边 currentColor 延展（对齐设置页） ── */
+html[data-motion="ornate"] .rc-global-btn,
+html[data-motion="ornate"] .tl-entry-btn,
+html[data-motion="ornate"] .folder-chip { position: relative; }
+html[data-motion="ornate"] .rc-global-btn::before,
+html[data-motion="ornate"] .tl-entry-btn::before,
+html[data-motion="ornate"] .folder-chip::after {
+  content: '';
+  position: absolute; inset: 1px;
+  pointer-events: none;
+  background:
+    linear-gradient(currentColor, currentColor) left top no-repeat,
+    linear-gradient(currentColor, currentColor) right top no-repeat,
+    linear-gradient(currentColor, currentColor) left bottom no-repeat,
+    linear-gradient(currentColor, currentColor) right bottom no-repeat,
+    linear-gradient(currentColor, currentColor) left top no-repeat,
+    linear-gradient(currentColor, currentColor) left bottom no-repeat,
+    linear-gradient(currentColor, currentColor) right top no-repeat,
+    linear-gradient(currentColor, currentColor) right bottom no-repeat;
+  background-size: 0 2px, 0 2px, 0 2px, 0 2px, 2px 0, 2px 0, 2px 0, 2px 0;
+  transition: background-size var(--motion-time-interaction) var(--motion-easing-standard);
+}
+html[data-motion="ornate"] .rc-global-btn:hover::before,
+html[data-motion="ornate"] .tl-entry-btn:hover::before,
+html[data-motion="ornate"] .folder-chip:hover::after {
+  background-size: 45% 2px, 45% 2px, 45% 2px, 45% 2px, 2px 45%, 2px 45%, 2px 45%, 2px 45%;
+}
+
+/* ══ 专辑 / 艺人视图卡片：蕾丝内衬 + 四角蝙蝠 + hover 红覆盖 ══ */
+html[data-motion="ornate"] .view-card {
+  position: relative;
+  transform: scale(0.6);
+  transition: opacity 0.5s var(--motion-easing-standard),
+              transform 1.15s cubic-bezier(0.34, 1.8, 0.64, 1);
+}
+html[data-motion="ornate"] .entered .view-card { transform: scale(1); }
+/* 内衬蕾丝框 */
+html[data-motion="ornate"] .view-card::before {
+  content: '';
+  position: absolute; inset: 3px;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(90deg, var(--border-color) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(90deg, var(--border-color) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(0deg, var(--border-color) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(0deg, var(--border-color) 0 1px, transparent 1px 7px);
+  background-repeat: no-repeat;
+  background-size: 100% 3px, 100% 3px, 3px 100%, 3px 100%;
+  background-position: 0 0, 0 100%, 0 0, 100% 0;
+  opacity: 0;
+  animation: lm-lace 8s linear infinite;
+  transition: opacity 0.9s var(--motion-easing-standard) 0.3s;
+}
+html[data-motion="ornate"] .entered .view-card::before { opacity: 0.4; }
+/* 四角蝙蝠（闪烁 + 偶发变红） */
+html[data-motion="ornate"] .view-card::after {
+  content: '';
+  position: absolute; inset: 0;
+  pointer-events: none;
+  background: var(--border-color);
+  -webkit-mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(315 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left top / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(45 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right top / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(225 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left bottom / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(135 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right bottom / 16px 16px no-repeat;
+  mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(315 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left top / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(45 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right top / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(225 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left bottom / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(135 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right bottom / 16px 16px no-repeat;
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 0.8s var(--motion-easing-standard) 0.4s,
+              transform 0.8s cubic-bezier(0.34, 1.4, 0.64, 1) 0.4s;
+}
+html[data-motion="ornate"] .entered .view-card::after {
+  opacity: 0.65;
+  transform: scale(1);
+  animation: lm-bat 5s ease-in-out infinite;
+}
+@keyframes lm-bat {
+  0%, 100% { opacity: 0.7;  background-color: var(--border-color); }
+  20%      { opacity: 0.18; background-color: var(--border-color); }
+  40%      { opacity: 0.85; background-color: #c0392b; }
+  62%      { opacity: 0.25; background-color: var(--border-color); }
+  82%      { opacity: 0.9;  background-color: #c0392b; }
+}
+/* hover：红色覆盖 */
+html[data-motion="ornate"] .view-card:hover {
+  background: #c0392b !important;
+  color: #fff !important;
+}
+
+/* ══ Ornate：歌曲列表小按钮四边 currentColor 延展 ══ */
+html[data-motion="ornate"] .song-btn { position: relative; }
+html[data-motion="ornate"] .song-btn::before {
+  content: '';
+  position: absolute; inset: 1px;
+  pointer-events: none;
+  background:
+    linear-gradient(currentColor, currentColor) left top no-repeat,
+    linear-gradient(currentColor, currentColor) right top no-repeat,
+    linear-gradient(currentColor, currentColor) left bottom no-repeat,
+    linear-gradient(currentColor, currentColor) right bottom no-repeat,
+    linear-gradient(currentColor, currentColor) left top no-repeat,
+    linear-gradient(currentColor, currentColor) left bottom no-repeat,
+    linear-gradient(currentColor, currentColor) right top no-repeat,
+    linear-gradient(currentColor, currentColor) right bottom no-repeat;
+  background-size: 0 2px, 0 2px, 0 2px, 0 2px, 2px 0, 2px 0, 2px 0, 2px 0;
+  transition: background-size var(--motion-time-interaction) var(--motion-easing-standard);
+}
+html[data-motion="ornate"] .song-btn:hover::before {
+  background-size: 45% 2px, 45% 2px, 45% 2px, 45% 2px, 2px 45%, 2px 45%, 2px 45%, 2px 45%;
+}
 </style>

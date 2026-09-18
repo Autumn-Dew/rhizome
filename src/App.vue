@@ -9,9 +9,16 @@ import { useLocalMusicStore } from '@/stores/localMusicStore'
 import { usePlayerStore } from '@/stores/playerStore'
 import { ref, onMounted } from "vue";
 import { generateReportForType, getReportSavePath, blobToBase64 } from '@/composables/useReportGenerator'
-import { checkAndGenerateWeekly } from '@/composables/useWeeklyPlaylists'
+import { checkAndGenerateAuto } from '@/composables/useWeeklyPlaylists'
 import { initGlobalUiSound, playCursorSound, preloadSfx, CLICKABLE_SELECTOR } from '@/composables/useSound'
 import { REPORT_TYPES, reportFilename, isReportGenerated, markReportGenerated, previousPeriodDate } from '@/utils/report'
+import { K_REPORT_AUTO } from '@/constants/storage-keys'
+
+// 报告自动生成开关（默认开启）
+function isReportAuto() {
+  return localStorage.getItem(K_REPORT_AUTO) !== 'false'
+}
+
 
 const appReady = ref(false)
 const playerStore = usePlayerStore()
@@ -27,6 +34,7 @@ async function saveReportBlob(savePath, blob, filename) {
 // 生成"当前周期"（当天/本周/本月/本年）的报告，同名覆盖
 async function generateCurrentReports() {
   try {
+    if (!isReportAuto()) return
     if (!localStoreRef) return
     const savePath = getReportSavePath()
     if (!savePath) return
@@ -43,6 +51,7 @@ async function generateCurrentReports() {
 // 启动时：补上一周期（昨天/上周/上月/去年）的遗漏报告
 async function backfillMissedReports() {
   try {
+    if (!isReportAuto()) return
     if (!localStoreRef) return
     const savePath = getReportSavePath()
     if (!savePath) return
@@ -62,6 +71,7 @@ async function backfillMissedReports() {
 // 整点检测：用户进行过至少一次操作时，若跨小时则生成当前周期报告
 let lastHourCheck = new Date().getHours()
 function onUserActivity() {
+  if (!isReportAuto()) return
   const h = new Date().getHours()
   if (h !== lastHourCheck) {
     lastHourCheck = h
@@ -98,13 +108,13 @@ onMounted(async () => {
   // 光标悬停音效（未播放状态）
   initCursorSound()
 
-  // 周报歌单（本周最爱 + 每周发现）
-  checkAndGenerateWeekly(localStore.songList)
+  // 自动歌单（周/月/年，三种独立）
+  checkAndGenerateAuto(localStore.songList)
 
   // 每 30 分钟检测是否需要更新智能歌单
   setInterval(() => {
     if (localStore.loaded && localStore.songList.length) {
-      checkAndGenerateWeekly(localStore.songList)
+      checkAndGenerateAuto(localStore.songList)
     }
   }, 30 * 60 * 1000)
 

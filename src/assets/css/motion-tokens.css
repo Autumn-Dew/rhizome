@@ -2,7 +2,6 @@
    Rhizome Motion Tokens — 统一动效设计令牌
    所有组件应通过此文件的 CSS 变量引用动效参数，
    避免硬编码 duration / easing。
-   在 global.css 中通过 @import 引入。
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── 时长阶梯 ── */
@@ -30,71 +29,143 @@
 
   /* ── 快捷组合：按钮 hover（all 属性） ── */
   --motion-btn-hover:        all var(--motion-duration-normal);
-
   /* ── 快捷组合：control-btn 统一样式 ── */
   --motion-control-hover:    all var(--motion-duration-normal);
 
   /* ── stagger 入场参数（供 JS composable 和 CSS 共用） ── */
   --motion-stagger-base:     0.24s;
   --motion-stagger-interval: 0.023s;
+
+  /* ── Motion System：强度（全局可调，勿逐组件硬编码） ── */
+  --motion-ambient:      1;   /* 常态 Motion 强度 */
+  --motion-interaction:  1;   /* 交互响应强度 */
+  --motion-transition:   1;   /* 页面转场强度 */
+
+  /* ── Motion System：时间尺度（不同尺度本身即视觉层级） ── */
+  --motion-time-micro:       0.15s;  /* Micro           100–250ms */
+  --motion-time-interaction: 0.25s;  /* Interaction     150–350ms */
+  --motion-time-event:       0.45s;  /* Event           300–650ms（切歌 / 歌词） */
+  --motion-time-ambient:     12s;    /* Ambient         4–20s */
+  --motion-time-structural:  30s;    /* Structural      15–60s */
+  --motion-time-page:        0.9s;   /* Page Transition 700–1000ms */
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   动画方案（多套风格，可切换）：覆盖 - -motion-* 变量，并定义 Ornate 构图 token。
+   - classic（经典）= :root 默认值，无需覆盖块。
+   - ornate（华丽）= 下面的覆盖块。
+   切换方式见 useMotionScheme：根元素挂 motion-* class + data-motion 属性。
+   ═══════════════════════════════════════════════════════════════════ */
+:root.motion-ornate {
+  /* 方案时长（更长、更舒展） */
+  --motion-duration-instant: 0.16s;
+  --motion-duration-micro:    0.2s;
+  --motion-duration-btn-transform: 0.22s;
+  --motion-duration-fast:    0.26s;
+  --motion-duration-medium:  0.32s;
+  --motion-duration-normal:  0.36s;
+  --motion-duration-slow:    0.48s;
+  --motion-duration-slower:  0.6s;
+  --motion-duration-glacial: 1s;
+  --motion-easing-standard:  cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-easing-enter:     cubic-bezier(0.19, 1, 0.22, 1);
+  --motion-easing-leave:     cubic-bezier(0.7, 0, 0.84, 0);
+  --motion-easing-spring:    cubic-bezier(0.22, 1.4, 0.36, 1);
+  --motion-easing-spark:     cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-easing-swipe:     cubic-bezier(0.65, 0, 0.35, 1);
+  --motion-stagger-base:     0.36s;
+  --motion-stagger-interval: 0.05s;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
    共享 Keyframes（项目级可复用动画）
    注：启动屏 (index.html) 需内联副本因其在 JS 加载前渲染
    ═══════════════════════════════════════════════════════════════════ */
+@keyframes mt-fade-in { from { opacity: 0; } to { opacity: 1; } }
 
-/* ── 淡入 ── */
-@keyframes mt-fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
+@keyframes mt-slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
-/* ── 从下方滑入（抽屉/底部弹窗） ── */
-@keyframes mt-slide-up {
-  from { transform: translateY(100%); }
-  to   { transform: translateY(0); }
-}
+@keyframes mt-slide-right { from { transform: translateX(100%); } to { transform: translateX(0); } }
 
-/* ── 从右侧滑入 ── */
-@keyframes mt-slide-right {
-  from { transform: translateX(100%); }
-  to   { transform: translateX(0); }
-}
-
-/* ── 弹窗入场（淡入 + 微缩放 + 微上移） ── */
 @keyframes mt-modal-in {
   from { opacity: 0; transform: scale(0.92) translateY(-12px); }
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-/* ── 弹簧反弹（排序/节点入场） ── */
 @keyframes mt-spring-bounce {
   0%   { transform: scale(1); }
   30%  { transform: scale(1.03); }
   100% { transform: scale(1); }
 }
 
-/* ── 脉冲闪烁 ── */
 @keyframes mt-pulse {
   0%, 100% { opacity: 0; }
   30%      { opacity: 0.5; }
 }
 
-/* ── 删除脉冲警告 ── */
 @keyframes mt-pulse-warn {
   0%, 100% { background: transparent; }
   50%      { background: var(--pulse-bg, rgba(255, 107, 107, 0.12)); }
 }
 
-/* ── 页面切换：进入（从左滑入） ── */
 @keyframes mt-page-enter {
   from { opacity: 0; transform: translateX(-24px); }
   to   { opacity: 1; transform: translateX(0); }
 }
 
-/* ── 页面切换：离开（向右滑出） ── */
 @keyframes mt-page-leave {
   from { opacity: 1; transform: translateX(0); }
   to   { opacity: 0; transform: translateX(12px); }
+}
+
+/* ── 多次闪烁浮现（华丽元素点亮收尾） ── */
+@keyframes mt-flicker {
+  0%   { opacity: 0; }
+  15%  { opacity: 1; }
+  28%  { opacity: 0.1; }
+  45%  { opacity: 1; }
+  60%  { opacity: 0.25; }
+  78%  { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Ornate（华丽）
+   —— 不再有页面级「装饰 token / 装饰 keyframes」。
+   Ornate 的视觉 = ① 更慢的动效节奏（上面的 :root.motion-ornate 时长 / easing 覆盖）
+   + ② 「界面几何重构」转场（UI → Geometry → Core，实现于 SpectrumTransition.vue，视为成品）。
+   各业务页面不再添加 ornate 装饰；classic 与共享 keyframes 不受影响。
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════════════
+   Ambient Motion（常态运行）—— 让界面「像一个正在运行的系统」，
+   而非「所有东西都在动」。幅度极小：应感觉「界面是活的」，而非「在呼吸」。
+   各元素使用不同时间尺度（--motion-time-ambient / structural）；仅 CSS animation，无 JS rAF。
+   ═══════════════════════════════════════════════════════════════════ */
+/* Core：封面极轻微 scale / brightness（最稳定） */
+@keyframes mt-cover-live {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50%      { transform: scale(1.004); filter: brightness(1.015); }
+}
+/* Ring / Arc：极慢漂移（仅 stroke-dashoffset 与 opacity，非匀速旋转） */
+@keyframes mt-arc-drift {
+  0%, 100% { stroke-dashoffset: 0; opacity: 0.35; }
+  50%      { stroke-dashoffset: 6; opacity: 0.6; }
+}
+/* 节点：低频明暗（局部，节奏 / 状态用） */
+@keyframes mt-node-pulse {
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 0.8; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Reduced Motion：降低旋转 / 呼吸 / 微位移 / 慢速结构动画（把常态时间尺度拉到近乎静止），
+   但保留状态变化、Focus 与必要反馈（不粗暴删光所有动画）。
+   ═══════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-ambient:          0;
+    --motion-time-ambient:     3600s;
+    --motion-time-structural:  3600s;
+  }
 }

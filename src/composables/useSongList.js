@@ -10,7 +10,7 @@
  */
 import { ref } from 'vue'
 
-export function useSongList(listRef, onPersist) {
+export function useSongList(listRef, onPersist, onApplyOrder) {
   // ── 排序模式（序号） ──
   const sortMode = ref(false)
   const sortOrderMap = ref({})
@@ -65,8 +65,14 @@ export function useSongList(listRef, onPersist) {
     let ki = 0
     for (let i = 0; i < total; i++) { if (!newList[i] && ki < toKeep.length) newList[i] = toKeep[ki++] }
 
-    listRef.value = newList.filter(Boolean)
-    onPersist?.()
+    const result = newList.filter(Boolean)
+    if (typeof onApplyOrder === 'function') {
+      // 由调用方自定义落地（如按作用域保存有序 path），不直接改写 listRef
+      onApplyOrder(result)
+    } else {
+      listRef.value = result
+      onPersist?.()
+    }
   }
 
   // ── 多选 ──

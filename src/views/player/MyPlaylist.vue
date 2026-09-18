@@ -39,17 +39,27 @@
           </div>
         </div>
         <div class="playlist-actions">
+          <button
+              v-if="item.isAuto"
+              class="song-btn"
+              @click="saveAutoPlaylist(item)"
+              title="永久保存"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" stroke-width="2"/>
+            </svg>
+          </button>
           <button class="song-btn" @click="playPlaylist(item)" title="播放">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path d="M5 3l14 9-14 9V3z" stroke-width="2"/>
             </svg>
           </button>
-          <button class="song-btn" @click="openAddSongModal(item)" title="添加歌曲">
+          <button v-if="!item.isAuto" class="song-btn" @click="openAddSongModal(item)" title="添加歌曲">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path d="M12 5v14M5 12h14" stroke-width="2"/>
             </svg>
           </button>
-          <button class="song-btn" @click="editPlaylist(item)" title="编辑">
+          <button v-if="!item.isAuto" class="song-btn" @click="editPlaylist(item)" title="编辑">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" stroke-width="2"/>
             </svg>
@@ -59,7 +69,8 @@
               class="song-btn"
               :class="{ 'delete-warning': confirmHint(item.localId) !== '' }"
               :style="pulseFor(item.localId)"
-              @click="handleDeleteClick(item)"
+              @click.stop="handleDeleteClick(item)"
+              @dblclick.stop
               :title="confirmHint(item.localId) || '删除'"
               data-charge-sound
           >
@@ -151,6 +162,7 @@ import { useLocalMusicStore } from "@/stores/localMusicStore";
 import { usePageEnter } from '@/composables/usePageEnter'
 import { useDeleteConfirm } from '@/composables/useDeleteConfirm'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { K_LOCAL_PLAYLISTS, K_PLAYLIST_SONGS } from "@/constants/storage-keys";
 import { createSongFromMeta } from '@/utils/song-factory'
 
@@ -321,6 +333,34 @@ const playPlaylist = (item) => {
 
 const goToPlaylistDetail = (item) => router.push(`/player/playlist-detail/${item.localId}`)
 
+// 永久保存自动歌单：转为普通歌单（脱离自动生成的清理）
+function saveAutoPlaylist(item) {
+  try {
+    const local = getLocalPlaylists()
+    const songs = getLocalPlaylistSongs()
+    const idx = local.findIndex(p => p.localId === item.localId)
+    if (idx === -1) return
+    const pl = local[idx]
+    const newId = `pl_${Date.now()}`
+    const oldSongs = songs[item.localId] || []
+    local.splice(idx, 1)
+    local.unshift({
+      localId: newId,
+      title: pl.title,
+      intro: pl.intro,
+      coverUrl: pl.coverUrl,
+      isAuto: false,
+      createdAt: Date.now(),
+    })
+    songs[newId] = oldSongs
+    delete songs[item.localId]
+    localStorage.setItem(K_LOCAL_PLAYLISTS, JSON.stringify(local))
+    localStorage.setItem(K_PLAYLIST_SONGS, JSON.stringify(songs))
+    loadPlaylistList()
+    ElMessage?.success?.({ message: '已保存为普通歌单', duration: 1500 })
+  } catch {}
+}
+
 onMounted(async () => { if (!localMusicStore.loaded && !localMusicStore.loading) await localMusicStore.initFromStorage(); loadPlaylistList(); triggerEnter(); });
 </script>
 
@@ -440,4 +480,187 @@ onMounted(async () => { if (!localMusicStore.loaded && !localMusicStore.loading)
               transform var(--motion-duration-fast) var(--motion-easing-standard);
 }
 .entered .playlist-item { opacity: 1; transform: translateX(0); }
+/* ══════════════════════════════════════════════════════════════
+   Ornate（华丽方案）页面装饰 —— 沿用设置页风格
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── 鸢尾花纹（明暗两套） ── */
+html[data-motion="ornate"] .my-playlist {
+  --mp-deco: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='%23000'%3E%3Cpath d='M50 4 C45 20 37 28 26 32 C17 36 13 45 16 53 C19 61 28 64 34 61 C27 57 25 50 29 45 C33 40 42 43 46 52 C48 57 49 63 50 70 C51 63 52 57 54 52 C58 43 67 40 71 45 C75 50 73 57 66 61 C72 64 81 61 84 53 C87 45 83 36 74 32 C63 28 55 20 50 4 Z'/%3E%3Crect x='26' y='74' width='48' height='9'/%3E%3C/g%3E%3C/svg%3E");
+}
+html[data-motion="ornate"] .my-playlist.theme-dark {
+  --mp-deco: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='%23fff'%3E%3Cpath d='M50 4 C45 20 37 28 26 32 C17 36 13 45 16 53 C19 61 28 64 34 61 C27 57 25 50 29 45 C33 40 42 43 46 52 C48 57 49 63 50 70 C51 63 52 57 54 52 C58 43 67 40 71 45 C75 50 73 57 66 61 C72 64 81 61 84 53 C87 45 83 36 74 32 C63 28 55 20 50 4 Z'/%3E%3Crect x='26' y='74' width='48' height='9'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* ── 页面头：外蕾丝 + 两侧鸢尾，标题/副标题居中 ── */
+html[data-motion="ornate"] .playlist-header { position: relative; }
+html[data-motion="ornate"] .playlist-header::before {
+  content: '';
+  position: absolute; inset: 6px;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(90deg, var(--border-color) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(90deg, var(--border-color) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(0deg, var(--border-color) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(0deg, var(--border-color) 0 1px, transparent 1px 5px),
+    var(--mp-deco), var(--mp-deco), var(--mp-deco),
+    var(--mp-deco), var(--mp-deco), var(--mp-deco);
+  background-repeat: no-repeat;
+  background-size: 100% 3px, 100% 3px, 3px 100%, 3px 100%, 14px 14px, 14px 14px, 14px 14px, 14px 14px, 14px 14px, 14px 14px;
+  background-position: 0 0, 0 100%, 0 0, 100% 0, 12px 20%, 12px 50%, 12px 80%, calc(100% - 12px) 20%, calc(100% - 12px) 50%, calc(100% - 12px) 80%;
+  opacity: 0;
+  animation: mp-lace 8s linear infinite;
+  transition: opacity 0.9s var(--motion-easing-standard) 0.3s;
+}
+html[data-motion="ornate"] .entered .playlist-header::before { opacity: 0.5; }
+html[data-motion="ornate"] .playlist-header h2 { text-align: center; letter-spacing: 2px; }
+/* 标题两侧对称点缀（与设置页一致：3 圆点 + 双短线 + 双小弧） */
+html[data-motion="ornate"] .playlist-header h2::before,
+html[data-motion="ornate"] .playlist-header h2::after {
+  content: '';
+  display: inline-block;
+  width: 92px; height: 14px;
+  vertical-align: middle;
+  margin: 0 14px;
+  opacity: 0;
+  transform: scaleX(0);
+  transform-origin: center;
+  background:
+    radial-gradient(circle, var(--border-color) 2px, transparent 2.5px) left center / 6px 6px no-repeat,
+    radial-gradient(circle, var(--border-color) 2px, transparent 2.5px) center center / 6px 6px no-repeat,
+    radial-gradient(circle, var(--border-color) 2px, transparent 2.5px) right center / 6px 6px no-repeat,
+    linear-gradient(90deg, var(--border-color), var(--border-color)) left 3px / 28px 1px no-repeat,
+    linear-gradient(90deg, var(--border-color), var(--border-color)) right 4px / 28px 1px no-repeat,
+    conic-gradient(from 200deg, var(--border-color) 0 50deg, transparent 50deg 360deg) 30px center / 12px 12px no-repeat,
+    conic-gradient(from 110deg, var(--border-color) 0 50deg, transparent 50deg 360deg) calc(100% - 30px) center / 12px 12px no-repeat;
+  transition: opacity 0.8s var(--motion-easing-standard) 0.4s,
+              transform 0.8s var(--motion-easing-enter) 0.4s;
+}
+html[data-motion="ornate"] .entered .playlist-header h2::before,
+html[data-motion="ornate"] .entered .playlist-header h2::after {
+  opacity: 0.75;
+  transform: scaleX(1);
+}
+html[data-motion="ornate"] .playlist-header .desc { text-align: center; }
+@keyframes mp-lace {
+  0%   { background-position: 0 0, 0 100%, 0 0, 100% 0, 12px 20%, 12px 50%, 12px 80%, calc(100% - 12px) 20%, calc(100% - 12px) 50%, calc(100% - 12px) 80%; }
+  100% { background-position: 7px 0, -7px 100%, 0 -7px, 100% 7px, 12px 20%, 12px 50%, 12px 80%, calc(100% - 12px) 20%, calc(100% - 12px) 50%, calc(100% - 12px) 80%; }
+}
+
+/* ── 列表项：从中间向两侧浮现 ── */
+html[data-motion="ornate"] .playlist-item {
+  opacity: 0; transform: scaleX(0);
+  transform-origin: center;
+  transition: opacity var(--motion-duration-fast) var(--motion-easing-standard),
+              transform var(--motion-duration-slow) var(--motion-easing-enter);
+}
+html[data-motion="ornate"] .entered .playlist-item { opacity: 1; transform: scaleX(1); }
+
+/* ── hover：单层红覆盖 + 两只白蝙蝠，自中间向两侧展开 ── */
+html[data-motion="ornate"] .playlist-item::before,
+html[data-motion="ornate"] .playlist-item:hover::before { display: none; }
+html[data-motion="ornate"] .playlist-item::after {
+  content: '';
+  position: absolute; inset: 0 -18px; z-index: -1;
+  pointer-events: none;
+  background-color: #c0392b;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23fff' transform='rotate(90 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23fff' transform='rotate(-90 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat, no-repeat;
+  background-position: left center, right center;
+  background-size: auto 100%, auto 100%;
+  clip-path: inset(0 50% 0 50%);
+  opacity: 0;
+  transition: opacity 0s, clip-path var(--motion-duration-glacial) var(--motion-easing-enter);
+}
+html[data-motion="ornate"] .playlist-item:hover::after {
+  opacity: 1;
+  clip-path: inset(0 0 0 0);
+}
+
+/* ── 弹窗卡片：内衬蕾丝 ── */
+html[data-motion="ornate"] .modal-content { position: relative; }
+html[data-motion="ornate"] .modal-content::before {
+  content: '';
+  position: absolute; inset: 5px;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(90deg, var(--border-color) 0 1px, transparent 1px 8px),
+    repeating-linear-gradient(90deg, var(--border-color) 0 1px, transparent 1px 8px),
+    repeating-linear-gradient(0deg, var(--border-color) 0 1px, transparent 1px 8px),
+    repeating-linear-gradient(0deg, var(--border-color) 0 1px, transparent 1px 8px);
+  background-repeat: no-repeat;
+  background-size: 100% 3px, 100% 3px, 3px 100%, 3px 100%;
+  background-position: 0 0, 0 100%, 0 0, 100% 0;
+  opacity: 0;
+  transition: opacity 0.9s var(--motion-easing-standard) 0.3s;
+}
+html[data-motion="ornate"] .entered .modal-content::before { opacity: 0.4; }
+html[data-motion="ornate"] .modal-content::after {
+  content: '';
+  position: absolute; inset: 0;
+  pointer-events: none;
+  background: var(--border-color);
+  -webkit-mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(315 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left top / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(45 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right top / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(225 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left bottom / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(135 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right bottom / 16px 16px no-repeat;
+  mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(315 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left top / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(45 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right top / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(225 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left bottom / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(135 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right bottom / 16px 16px no-repeat;
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 0.8s var(--motion-easing-standard) 0.4s,
+              transform 0.8s cubic-bezier(0.34, 1.4, 0.64, 1) 0.4s;
+}
+html[data-motion="ornate"] .entered .modal-content::after {
+  opacity: 0.65;
+  transform: scale(1);
+  animation: mp-mbat 5s ease-in-out infinite;
+}
+@keyframes mp-mbat {
+  0%, 100% { opacity: 0.7;  background-color: var(--border-color); }
+  20%      { opacity: 0.18; background-color: var(--border-color); }
+  40%      { opacity: 0.85; background-color: #c0392b; }
+  62%      { opacity: 0.25; background-color: var(--border-color); }
+  82%      { opacity: 0.9;  background-color: #c0392b; }
+}
+
+/* ── 按钮：hover 反色 + 四边 currentColor 延展（对齐设置页） ── */
+html[data-motion="ornate"] .rc-global-btn,
+html[data-motion="ornate"] .song-btn,
+html[data-motion="ornate"] .btn-cancel,
+html[data-motion="ornate"] .btn-confirm,
+html[data-motion="ornate"] .folder-add-btn { position: relative; }
+html[data-motion="ornate"] .rc-global-btn::before,
+html[data-motion="ornate"] .song-btn::before,
+html[data-motion="ornate"] .btn-cancel::before,
+html[data-motion="ornate"] .btn-confirm::before,
+html[data-motion="ornate"] .folder-add-btn::before {
+  content: '';
+  position: absolute; inset: 1px;
+  pointer-events: none;
+  background:
+    linear-gradient(currentColor, currentColor) left top no-repeat,
+    linear-gradient(currentColor, currentColor) right top no-repeat,
+    linear-gradient(currentColor, currentColor) left bottom no-repeat,
+    linear-gradient(currentColor, currentColor) right bottom no-repeat,
+    linear-gradient(currentColor, currentColor) left top no-repeat,
+    linear-gradient(currentColor, currentColor) left bottom no-repeat,
+    linear-gradient(currentColor, currentColor) right top no-repeat,
+    linear-gradient(currentColor, currentColor) right bottom no-repeat;
+  background-size: 0 2px, 0 2px, 0 2px, 0 2px, 2px 0, 2px 0, 2px 0, 2px 0;
+  transition: background-size var(--motion-time-interaction) var(--motion-easing-standard);
+}
+html[data-motion="ornate"] .rc-global-btn:hover::before,
+html[data-motion="ornate"] .song-btn:hover::before,
+html[data-motion="ornate"] .btn-cancel:hover::before,
+html[data-motion="ornate"] .btn-confirm:hover::before,
+html[data-motion="ornate"] .folder-add-btn:hover::before {
+  background-size: 45% 2px, 45% 2px, 45% 2px, 45% 2px, 2px 45%, 2px 45%, 2px 45%, 2px 45%;
+}
 </style>

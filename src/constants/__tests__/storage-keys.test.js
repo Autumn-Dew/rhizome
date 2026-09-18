@@ -9,6 +9,7 @@ const EXPECTED = {
     K_PLAY_MODE: 'rhizome-play-mode',
     K_VOLUME: 'rhizome-volume',
     K_THEME: 'rhizome-theme',
+    K_MOTION: 'rhizome-motion',
     K_LYRIC_SIZE: 'rhizome-lyric-size',
     K_LYRIC_ALIGN: 'rhizome-lyric-align',
     K_DESKTOP_LYRICS_VIS: 'rhizome-desktop-lyrics-visible',
@@ -29,6 +30,10 @@ const EXPECTED = {
     K_REPORT_GENERATED: 'rhizome-report-generated',
     K_SOUND_ENABLED: 'rhizome-sound-enabled',
     K_SOUND_VOLUME: 'rhizome-sound-volume',
+    K_SORT_PREF: 'rhizome-sort-pref',
+    K_SORT_ORDERS: 'rhizome-sort-orders',
+    K_REPORT_AUTO: 'rhizome-report-auto',
+    K_SCREENSAVER_ENABLED: 'rhizome-screensaver-enabled',
     // ── 旧版 / 非 rhizome 前缀（兼容） ──
     K_LOCAL_PLAYLISTS: 'local_playlists',
     K_PLAYLIST_SONGS: 'local_playlist_songs',

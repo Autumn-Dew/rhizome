@@ -671,6 +671,8 @@ ipcMain.handle('update-global-shortcuts', async (e, list) => {
 })
 
 app.whenReady().then(() => {
+    // 设置 AppUserModelID，使 Windows 媒体控件（SMTC）显示应用名「Rhizome」而非「未知应用」
+    app.setAppUserModelId('com.rhizome.music.player')
     createWindow()
 
     // 初始全局快捷键

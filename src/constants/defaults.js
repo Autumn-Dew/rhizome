@@ -99,7 +99,7 @@ export const LYRIC_ALIGN_DEFAULT = 'center'
 
 // ── 删除确认 ──
 export const DELETE_CONFIRM_DEFAULT = 3
-export const DELETE_CONFIRM_OPTIONS = [1, 2, 3]
+export const DELETE_CONFIRM_OPTIONS = [1, 2, 3, 4, 5]
 
 // ── 歌词延迟 ──
 export const LYRIC_OFFSET_DEFAULT = 0     // ms

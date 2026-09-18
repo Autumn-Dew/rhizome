@@ -733,4 +733,106 @@ onUnmounted(() => { window.removeEventListener('resize', onResize); clearTimeout
 .tl-hover-artist { font-size: 11px; opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
 
 .tl-hover-time { font-size: 10px; font-family: monospace; opacity: 0.55; white-space: nowrap; }
+
+/* ── 鸢尾花纹（明暗两套，供页头左侧花使用） ── */
+html[data-motion="ornate"] .music-timeline {
+  --tl-deco: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='%23000'%3E%3Cpath d='M50 4 C45 20 37 28 26 32 C17 36 13 45 16 53 C19 61 28 64 34 61 C27 57 25 50 29 45 C33 40 42 43 46 52 C48 57 49 63 50 70 C51 63 52 57 54 52 C58 43 67 40 71 45 C75 50 73 57 66 61 C72 64 81 61 84 53 C87 45 83 36 74 32 C63 28 55 20 50 4 Z'/%3E%3Crect x='26' y='74' width='48' height='9'/%3E%3C/g%3E%3C/svg%3E");
+}
+html[data-motion="ornate"] .music-timeline.theme-dark {
+  --tl-deco: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='%23fff'%3E%3Cpath d='M50 4 C45 20 37 28 26 32 C17 36 13 45 16 53 C19 61 28 64 34 61 C27 57 25 50 29 45 C33 40 42 43 46 52 C48 57 49 63 50 70 C51 63 52 57 54 52 C58 43 67 40 71 45 C75 50 73 57 66 61 C72 64 81 61 84 53 C87 45 83 36 74 32 C63 28 55 20 50 4 Z'/%3E%3Crect x='26' y='74' width='48' height='9'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* ═══ ornate：页头蕾丝内衬 + 左侧 3 个鸢尾花（右侧有按钮故不装饰） ═══ */
+html[data-motion="ornate"] .tl-header::before {
+  content: ''; position: absolute; inset: 6px; pointer-events: none;
+  background-image:
+    repeating-linear-gradient(90deg, var(--border-color) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(90deg, var(--border-color) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(0deg, var(--border-color) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(0deg, var(--border-color) 0 1px, transparent 1px 5px),
+    var(--tl-deco), var(--tl-deco), var(--tl-deco);
+  background-repeat: no-repeat;
+  background-size: 100% 3px, 100% 3px, 3px 100%, 3px 100%, 14px 14px, 14px 14px, 14px 14px;
+  background-position: 0 0, 0 100%, 0 0, 100% 0, 12px 20%, 12px 50%, 12px 80%;
+  opacity: 0;
+  animation: tl-lace 8s linear infinite;
+  transition: opacity 0.9s var(--motion-easing-standard) 0.3s;
+}
+html[data-motion="ornate"] .entered .tl-header::before { opacity: 0.5; }
+@keyframes tl-lace {
+  0%   { background-position: 0 0, 0 100%, 0 0, 100% 0, 12px 20%, 12px 50%, 12px 80%; }
+  100% { background-position: 7px 0, -7px 100%, 0 -7px, 100% 7px, 12px 20%, 12px 50%, 12px 80%; }
+}
+
+/* ── ornate：标题居中（三列 grid：左空 / 中标题 / 右按钮）；
+   标题保持在文档流内，使页头高度与其它页面一致 ── */
+html[data-motion="ornate"] .tl-header-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+}
+html[data-motion="ornate"] .tl-header-row > div { grid-column: 2; text-align: center; }
+html[data-motion="ornate"] .tl-header-row > .tl-header-actions { grid-column: 3; justify-self: end; }
+html[data-motion="ornate"] .tl-header h2 { text-align: center; letter-spacing: 2px; }
+html[data-motion="ornate"] .tl-desc { text-align: center; }
+/* 标题两侧对称点缀（与设置页一致：3 圆点 + 双短线 + 双小弧） */
+html[data-motion="ornate"] .tl-header h2::before,
+html[data-motion="ornate"] .tl-header h2::after {
+  content: '';
+  display: inline-block;
+  width: 92px; height: 14px;
+  vertical-align: middle;
+  margin: 0 14px;
+  opacity: 0;
+  transform: scaleX(0);
+  transform-origin: center;
+  background:
+    radial-gradient(circle, var(--border-color) 2px, transparent 2.5px) left center / 6px 6px no-repeat,
+    radial-gradient(circle, var(--border-color) 2px, transparent 2.5px) center center / 6px 6px no-repeat,
+    radial-gradient(circle, var(--border-color) 2px, transparent 2.5px) right center / 6px 6px no-repeat,
+    linear-gradient(90deg, var(--border-color), var(--border-color)) left 3px / 28px 1px no-repeat,
+    linear-gradient(90deg, var(--border-color), var(--border-color)) right 4px / 28px 1px no-repeat,
+    conic-gradient(from 200deg, var(--border-color) 0 50deg, transparent 50deg 360deg) 30px center / 12px 12px no-repeat,
+    conic-gradient(from 110deg, var(--border-color) 0 50deg, transparent 50deg 360deg) calc(100% - 30px) center / 12px 12px no-repeat;
+  transition: opacity 0.8s var(--motion-easing-standard) 0.4s,
+              transform 0.8s var(--motion-easing-enter) 0.4s;
+}
+html[data-motion="ornate"] .entered .tl-header h2::before,
+html[data-motion="ornate"] .entered .tl-header h2::after {
+  opacity: 0.75;
+  transform: scaleX(1);
+}
+html[data-motion="ornate"] .tl-desc { text-align: center; }
+html[data-motion="ornate"] .tl-header-row > .tl-header-actions { position: relative; z-index: 1; margin-left: auto; }
+
+/* ── ornate：按钮 hover 反色 + 四边 currentColor 延展（对齐 PlayStats） ── */
+html[data-motion="ornate"] .tl-back-btn,
+html[data-motion="ornate"] .tl-entry-btn,
+html[data-motion="ornate"] .tl-view-btn,
+html[data-motion="ornate"] .tl-nav-btn { position: relative; }
+html[data-motion="ornate"] .tl-back-btn::before,
+html[data-motion="ornate"] .tl-entry-btn::before,
+html[data-motion="ornate"] .tl-view-btn::before,
+html[data-motion="ornate"] .tl-nav-btn::before {
+  content: '';
+  position: absolute; inset: 1px;
+  pointer-events: none;
+  background:
+    linear-gradient(currentColor, currentColor) left top no-repeat,
+    linear-gradient(currentColor, currentColor) right top no-repeat,
+    linear-gradient(currentColor, currentColor) left bottom no-repeat,
+    linear-gradient(currentColor, currentColor) right bottom no-repeat,
+    linear-gradient(currentColor, currentColor) left top no-repeat,
+    linear-gradient(currentColor, currentColor) left bottom no-repeat,
+    linear-gradient(currentColor, currentColor) right top no-repeat,
+    linear-gradient(currentColor, currentColor) right bottom no-repeat;
+  background-size: 0 2px, 0 2px, 0 2px, 0 2px, 2px 0, 2px 0, 2px 0, 2px 0;
+  transition: background-size var(--motion-time-interaction) var(--motion-easing-standard);
+}
+html[data-motion="ornate"] .tl-back-btn:hover::before,
+html[data-motion="ornate"] .tl-entry-btn:hover::before,
+html[data-motion="ornate"] .tl-view-btn:hover::before,
+html[data-motion="ornate"] .tl-nav-btn:hover::before {
+  background-size: 45% 2px, 45% 2px, 45% 2px, 45% 2px, 2px 45%, 2px 45%, 2px 45%, 2px 45%;
+}
 </style>

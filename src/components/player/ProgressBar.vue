@@ -222,4 +222,17 @@ const onWheel = (e) => {
   white-space: nowrap;
   z-index: 9999;
 }
+/* ══ Ornate：进度条——红色填充 + 蝙蝠播放头 ══ */
+html[data-motion="ornate"] .rc-progress-track { overflow: visible; }
+html[data-motion="ornate"] .rc-progress-fill { background: #c0392b; }
+html[data-motion="ornate"] .rc-progress-fill::after {
+  content: '';
+  position: absolute; right: -5px; top: 50%;
+  width: 14px; height: 14px;
+  transform: translateY(-50%);
+  background: #c0392b;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23000' transform='rotate(90 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23000' transform='rotate(90 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") center / contain no-repeat;
+  pointer-events: none;
+}
 </style>

@@ -12,6 +12,7 @@
 export const K_PLAY_MODE         = 'rhizome-play-mode'
 export const K_VOLUME             = 'rhizome-volume'
 export const K_THEME              = 'rhizome-theme'
+export const K_MOTION             = 'rhizome-motion'
 export const K_LYRIC_SIZE         = 'rhizome-lyric-size'
 export const K_LYRIC_ALIGN        = 'rhizome-lyric-align'
 export const K_DESKTOP_LYRICS_VIS = 'rhizome-desktop-lyrics-visible'
@@ -32,6 +33,10 @@ export const K_SONG_CACHE        = 'rhizome-song-cache'
 export const K_REPORT_GENERATED  = 'rhizome-report-generated'
 export const K_SOUND_ENABLED     = 'rhizome-sound-enabled'
 export const K_SOUND_VOLUME      = 'rhizome-sound-volume'
+export const K_SORT_PREF         = 'rhizome-sort-pref'
+export const K_SORT_ORDERS       = 'rhizome-sort-orders'
+export const K_REPORT_AUTO       = 'rhizome-report-auto'
+export const K_SCREENSAVER_ENABLED = 'rhizome-screensaver-enabled'
 
 // ── 旧版 / 非 rhizome 前缀（兼容） ──
 export const K_LOCAL_PLAYLISTS    = 'local_playlists'
@@ -48,6 +53,7 @@ export const ALL_STORAGE_KEYS = [
   K_PLAY_MODE,
   K_VOLUME,
   K_THEME,
+  K_MOTION,
   K_LYRIC_SIZE,
   K_LYRIC_ALIGN,
   K_DESKTOP_LYRICS_VIS,
@@ -66,6 +72,10 @@ export const ALL_STORAGE_KEYS = [
   K_REPORT_GENERATED,
   K_SOUND_ENABLED,
   K_SOUND_VOLUME,
+  K_SORT_PREF,
+  K_SORT_ORDERS,
+  K_REPORT_AUTO,
+  K_SCREENSAVER_ENABLED,
   // 大型数据
   K_LOCAL_PLAYLISTS,
   K_PLAYLIST_SONGS,

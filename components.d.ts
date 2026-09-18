@@ -21,6 +21,8 @@ declare module 'vue' {
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SelectModal: typeof import('./src/components/common/SelectModal.vue')['default']
+    SpectrumOverlay: typeof import('./src/components/player/SpectrumOverlay.vue')['default']
+    SpectrumTransition: typeof import('./src/components/player/SpectrumTransition.vue')['default']
     SplashOverlay: typeof import('./src/components/splash/SplashOverlay.vue')['default']
     Timestamp: typeof import('./src/components/player/Timestamp.vue')['default']
     VolumeControl: typeof import('./src/components/player/VolumeControl.vue')['default']

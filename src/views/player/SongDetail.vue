@@ -1,7 +1,7 @@
 <template>
-  <div class="song-detail" :class="[themeClass]">
+  <div class="song-detail" :class="[themeClass, { 'spectrum-out': detailFolded }]">
     <div class="detail-container" :class="{ entered, switching }">
-      <div class="detail-header">
+      <div class="detail-header" :style="foldStyle('header')">
         <div class="song-info">
           <h1 class="song-title">{{ currentSong.name }}</h1>
           <p class="song-artist">{{ currentSong.singer }}</p>
@@ -10,7 +10,7 @@
 
       <div class="detail-main">
         <div class="album-section">
-          <div class="album-cover" @click="goBack" title="点击返回">
+          <div class="album-cover" @click="openSpectrum" title="点击打开频谱">
             <img v-if="currentSong.coverUrl" :src="currentSong.coverUrl" alt="cover"/>
             <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <circle cx="12" cy="12" r="10" stroke-width="2"/>
@@ -18,7 +18,7 @@
             </svg>
           </div>
 
-          <div class="player-controls">
+          <div class="player-controls" :style="foldStyle('controls')">
             <button class="control-btn" @click="playerStore.prevSong">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path d="M19 20L9 12 19 4v16z" stroke-width="2"/>
@@ -40,7 +40,7 @@
             </button>
           </div>
 
-          <div class="progress-section">
+          <div class="progress-section" :style="foldStyle('progress')">
             <span class="time">{{ formatTime(playerStore.currentTime) }}</span>
             <div
                 class="progress-bar-container"
@@ -80,7 +80,7 @@
           <canvas ref="spectrumCanvas" class="spectrum-canvas" v-show="playerStore.isPlaying && currentSong.path"></canvas>
         </div>
 
-        <div class="lyrics-section">
+        <div class="lyrics-section" :style="foldStyle('lyrics')">
           <div class="lyrics-frame" :style="{ '--border-progress': borderProgress }">
             <div class="lyrics-wrapper" ref="lyricsBox">
               <div class="lyrics-container">
@@ -101,17 +101,38 @@
       </div>
     </div>
   </div>
+
+  <SpectrumTransition
+    v-if="transitionMode !== 'none'"
+    :active="true"
+    :mode="transitionMode"
+    :coverUrl="currentSong.coverUrl || ''"
+    :fromRect="transitionFromRect"
+    :layoutRects="transitionLayoutRects"
+    @reveal="onTransitionReveal"
+    @done="onTransitionDone"
+  />
+
+  <SpectrumOverlay
+    :visible="spectrumVisible"
+    :coverUrl="currentSong.coverUrl || ''"
+    :song="currentSong"
+    @close="closeSpectrum"
+  />
 </template>
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePageEnter } from '@/composables/usePageEnter'
+import { useMotionState } from '@/composables/useMotionState'
 import { useGlobalTheme } from '@/composables/useGlobalTheme'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useLyricOffset } from '@/composables/useLyricOffset'
 import { formatTime } from '@/utils/format'
 import { resolveLyrics } from '@/utils/lyrics'
+import SpectrumOverlay from '@/components/player/SpectrumOverlay.vue'
+import SpectrumTransition from '@/components/player/SpectrumTransition.vue'
 
 const router = useRouter()
 const { themeClass } = useGlobalTheme()
@@ -380,6 +401,82 @@ const onDetailWheel = (e) => {
 }
 
 const goBack = () => router.back()
+const spectrumVisible = ref(false)
+// 'none' | 'in'（详情页→频谱页）| 'out'（频谱页→详情页）
+const transitionMode = ref('none')
+// 接入 Motion State：转场进行中让 Ambient 让位（transition 优先级最高）
+const { setTransitioning } = useMotionState()
+watch(transitionMode, (m) => setTransitioning(m !== 'none'))
+const transitionFromRect = ref(null)
+// 详情页各 UI 区域矩形（供过场把布局映射为几何线条）
+const transitionLayoutRects = ref(null)
+// 详情页打包层是否处于「向后折叠」态：进入时折叠，退出完成后恢复
+const detailFolded = ref(false)
+
+function openSpectrum() {
+  if (transitionMode.value !== 'none' || spectrumVisible.value) return
+  // 记录详情页封面的实际位置/尺寸，供过场做共享元素（FLIP）动画
+  const el = document.querySelector('.album-cover')
+  transitionFromRect.value = el ? el.getBoundingClientRect().toJSON() : null
+  measureLayoutRects()
+  detailFolded.value = true
+  transitionMode.value = 'in'
+}
+// 详情页封面始终在 DOM 里，退出时可重新取一次位置
+function measureCover() {
+  const el = document.querySelector('.album-cover')
+  if (el) transitionFromRect.value = el.getBoundingClientRect().toJSON()
+}
+
+// 采集详情页各 UI 区域矩形，供过场阶段 2「UI → 线条」把真实布局映射成几何线条
+function rectOf(sel) {
+  const el = document.querySelector(sel)
+  return el ? el.getBoundingClientRect().toJSON() : null
+}
+function measureLayoutRects() {
+  transitionLayoutRects.value = {
+    root: rectOf('.song-detail'),
+    header: rectOf('.detail-header'),
+    controls: rectOf('.player-controls'),
+    progress: rectOf('.progress-section'),
+    lyrics: rectOf('.lyrics-section'),
+  }
+}
+
+// 详情页各「打包层」向后折叠的内联样式（内联优先级最高，避免被既有 CSS 覆盖）
+const FOLD_LAYERS = {
+  header: { y: -46, s: 0.9, d: 0.02 },
+  controls: { y: -26, s: 0.86, d: 0.08 },
+  progress: { y: -14, s: 0.82, d: 0.14 },
+  lyrics: { y: -30, s: 0.88, d: 0.1 },
+}
+function foldStyle(key) {
+  const f = FOLD_LAYERS[key]
+  if (!f) return {}
+  const base = { transform: '', opacity: '', transitionDelay: '' }
+  if (!detailFolded.value) return base
+  return {
+    transform: `translateY(${f.y}px) scale(${f.s})`,
+    opacity: '0',
+    transition: 'transform 0.9s cubic-bezier(0.55,0,0.85,0.4), opacity 0.85s ease',
+    transitionDelay: `${f.d}s`,
+  }
+}
+function closeSpectrum() {
+  if (transitionMode.value !== 'none') return
+  measureCover()
+  measureLayoutRects()
+  detailFolded.value = false // 详情页各层依次展开
+  transitionMode.value = 'out'
+  spectrumVisible.value = false
+}
+// 过场淡出期间先显示频谱页（z-index 低于过场）→ 交叉淡入淡出，避免突兀切换
+function onTransitionReveal() {
+  spectrumVisible.value = true
+}
+function onTransitionDone() {
+  transitionMode.value = 'none'
+}
 </script>
 
 <style scoped>
@@ -417,7 +514,25 @@ const goBack = () => router.back()
   background: var(--bg);
   color: var(--text);
   overflow: hidden;
+  /* 3D 透视容器：进入频谱页时各「打包层」沿透视向后折叠 */
+  perspective: 1400px;
+  perspective-origin: 50% 42%;
 }
+
+/* ===== 进入频谱页：详情页各打包层向后折叠（实际由 foldStyle() 内联样式驱动，见 script） =====
+   说明：这里的 CSS 版本会被页面上更高的优先级吞掉，故改由内联 style 驱动；
+   本块仅保留层的基础过渡与 3D 上下文。 */
+.song-detail .detail-header,
+.song-detail .player-controls,
+.song-detail .progress-section,
+.song-detail .song-stats,
+.song-detail .song-meta,
+.song-detail .lyrics-section {
+  transform-style: preserve-3d;
+  will-change: transform, opacity;
+}
+/* 封面交给过场里的飞行封面接管 */
+.song-detail.spectrum-out .album-cover { opacity: 0; transition: opacity 0.25s ease; }
 
 .detail-container {
   padding: 40px 20px 20px;
@@ -555,6 +670,7 @@ const goBack = () => router.back()
               transform 0.22s var(--motion-easing-standard),
               clip-path var(--motion-duration-normal) var(--motion-easing-enter);
 }
+
 .entered .album-cover {
   opacity: 1;
   transform: translateX(0);
@@ -1076,6 +1192,198 @@ const goBack = () => router.back()
   .detail-container {
     padding: 16px;
   }
+}
+
+/* 注：Ornate 的页面装饰已废弃。ornate 现仅表示「更慢的动效节奏」+「界面几何重构」转场（见 SpectrumTransition.vue）。 */
+
+/* ═══ Motion System：Ambient + 局部 Hover 响应（仅「华丽」动画方案生效）═══
+   仅 html[data-motion="ornate"] 下挂载；classic 保持原生动效。
+   约束：绝对定位伪元素 + transform / opacity / background-*；pointer-events: none（不改布局、不影响功能）。 */
+
+/* Core：播放中封面极轻微「活着」 */
+html[data-motion="ornate"][data-motion-mode="playing"] .album-cover {
+  animation: mt-cover-live var(--motion-time-ambient) var(--motion-easing-ease-out) infinite;
+}
+/* 进度：红色填充 + 蝙蝠播放头（替代圆点） */
+html[data-motion="ornate"] .progress-fill { position: relative; background: #c0392b; }
+html[data-motion="ornate"] .progress-fill::after {
+  content: '';
+  position: absolute; right: -7px; top: 50%;
+  width: 16px; height: 16px;
+  transform: translateY(-50%);
+  background: #c0392b;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23000' transform='rotate(90 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23000' transform='rotate(90 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") center / contain no-repeat;
+  pointer-events: none;
+}
+html[data-motion="ornate"][data-motion-mode="playing"] .progress-fill::after {
+  animation: mt-node-pulse var(--motion-time-ambient) ease-in-out infinite;
+}
+
+/* 封面 hover：略微放大 */
+/* 封面 hover：略微放大（需带 .entered，否则会被下方 .entered .album-cover{transform:scale(1)} 覆盖） */
+html[data-motion="ornate"] .entered .album-cover:hover { transform: scale(1.03); }
+
+/* 歌曲信息左侧：藤蔓纹样（替代 classic 光秃竖线），保留自上而下生长入场 */
+html[data-motion="ornate"] .detail-header::before {
+  width: 8px;
+  background: var(--border);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 96' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M12 2 C6 14 18 24 12 38 C6 52 18 62 12 76 C9 83 10 90 12 94'/%3E%3Cpath d='M12 20 C8 18 6 14 6 10'/%3E%3Cpath d='M12 20 C16 18 18 14 18 10'/%3E%3Cpath d='M12 56 C8 54 6 50 6 46'/%3E%3Cpath d='M12 56 C16 54 18 50 18 46'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 96' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M12 2 C6 14 18 24 12 38 C6 52 18 62 12 76 C9 83 10 90 12 94'/%3E%3Cpath d='M12 20 C8 18 6 14 6 10'/%3E%3Cpath d='M12 20 C16 18 18 14 18 10'/%3E%3Cpath d='M12 56 C8 54 6 50 6 46'/%3E%3Cpath d='M12 56 C16 54 18 50 18 46'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+}
+
+/* ═══ 按钮动效规范（ornate）：hover 反色 + 四条边从角向中点延展（currentColor）═══
+   对齐设置页左侧按钮；后续各页面按钮沿用此规范。 */
+/* 控制按钮 */
+html[data-motion="ornate"] .control-btn::before {
+  content: '';
+  position: absolute; inset: 1px;
+  pointer-events: none;
+  background:
+    linear-gradient(currentColor, currentColor) left top no-repeat,
+    linear-gradient(currentColor, currentColor) right top no-repeat,
+    linear-gradient(currentColor, currentColor) left bottom no-repeat,
+    linear-gradient(currentColor, currentColor) right bottom no-repeat,
+    linear-gradient(currentColor, currentColor) left top no-repeat,
+    linear-gradient(currentColor, currentColor) left bottom no-repeat,
+    linear-gradient(currentColor, currentColor) right top no-repeat,
+    linear-gradient(currentColor, currentColor) right bottom no-repeat;
+  background-size: 0 2px, 0 2px, 0 2px, 0 2px, 2px 0, 2px 0, 2px 0, 2px 0;
+  transition: background-size var(--motion-time-interaction) var(--motion-easing-standard);
+}
+html[data-motion="ornate"] .control-btn:hover::before {
+  background-size: 45% 2px, 45% 2px, 45% 2px, 45% 2px, 2px 45%, 2px 45%, 2px 45%, 2px 45%;
+}
+/* 返回按钮 / 全屏歌词按钮：同一规范（补齐四边延展） */
+html[data-motion="ornate"] .back-btn,
+html[data-motion="ornate"] .lyrics-fullscreen-btn { position: relative; }
+html[data-motion="ornate"] .back-btn::before,
+html[data-motion="ornate"] .lyrics-fullscreen-btn::before {
+  content: '';
+  position: absolute; inset: 1px;
+  pointer-events: none;
+  background:
+    linear-gradient(currentColor, currentColor) left top no-repeat,
+    linear-gradient(currentColor, currentColor) right top no-repeat,
+    linear-gradient(currentColor, currentColor) left bottom no-repeat,
+    linear-gradient(currentColor, currentColor) right bottom no-repeat,
+    linear-gradient(currentColor, currentColor) left top no-repeat,
+    linear-gradient(currentColor, currentColor) left bottom no-repeat,
+    linear-gradient(currentColor, currentColor) right top no-repeat,
+    linear-gradient(currentColor, currentColor) right bottom no-repeat;
+  background-size: 0 2px, 0 2px, 0 2px, 0 2px, 2px 0, 2px 0, 2px 0, 2px 0;
+  transition: background-size var(--motion-time-interaction) var(--motion-easing-standard);
+}
+html[data-motion="ornate"] .back-btn:hover::before,
+html[data-motion="ornate"] .lyrics-fullscreen-btn:hover::before {
+  background-size: 45% 2px, 45% 2px, 45% 2px, 45% 2px, 2px 45%, 2px 45%, 2px 45%, 2px 45%;
+}
+
+/* 封面 —— 四角蝙蝠剪影（按角位斜 45° 朝外，闪烁明暗） */
+html[data-motion="ornate"] .album-cover::after {
+  content: '';
+  position: absolute; inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: var(--border);
+  -webkit-mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(315 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left top / 20px 20px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(45 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right top / 20px 20px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(225 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left bottom / 20px 20px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(135 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right bottom / 20px 20px no-repeat;
+  mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(315 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left top / 20px 20px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(45 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right top / 20px 20px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(225 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left bottom / 20px 20px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(135 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right bottom / 20px 20px no-repeat;
+  opacity: 0.7;
+  animation: sd-bat 5s ease-in-out infinite;
+}
+@keyframes sd-bat {
+  0%, 100% { opacity: 0.7;  background-color: var(--border); }
+  20%      { opacity: 0.18; background-color: var(--border); }
+  40%      { opacity: 0.85; background-color: #c0392b; }
+  62%      { opacity: 0.25; background-color: var(--border); }
+  82%      { opacity: 0.9;  background-color: #c0392b; }
+}
+
+/* 歌词区四角：蝙蝠剪影（替代 classic 四角短线取景框），闪烁 + 偶发变红 */
+html[data-motion="ornate"] .lyrics-frame::after {
+  inset: 0;
+  background: var(--border);
+  -webkit-mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(315 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left top / 18px 18px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(45 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right top / 18px 18px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(225 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left bottom / 18px 18px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(135 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right bottom / 18px 18px no-repeat;
+  mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(315 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left top / 18px 18px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(45 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right top / 18px 18px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(225 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left bottom / 18px 18px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(135 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right bottom / 18px 18px no-repeat;
+  opacity: 0.6;
+  animation: sd-bat 5s ease-in-out infinite;
+}
+
+/* Hover：歌词行局部聚焦（无位移） */
+html[data-motion="ornate"] .lyrics-container p:not(.active):hover { opacity: 0.75; }
+
+/* 常驻：封面蕾丝边（四边短线），缓慢流动（Lolita 装帧） */
+html[data-motion="ornate"] .album-cover::before {
+  content: '';
+  position: absolute; inset: 3px;
+  z-index: 2;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(90deg, var(--border) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(90deg, var(--border) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(0deg, var(--border) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(0deg, var(--border) 0 1px, transparent 1px 7px);
+  background-repeat: no-repeat;
+  background-size: 100% 3px, 100% 3px, 3px 100%, 3px 100%;
+  background-position: 0 0, 0 100%, 0 0, 100% 0;
+  opacity: 0.55;
+  animation: sd-lace 8s linear infinite;
+}
+@keyframes sd-lace {
+  0%   { background-position: 0 0, 0 100%, 0 0, 100% 0; }
+  100% { background-position: 7px 0, -7px 100%, 0 -7px, 100% 7px; }
+}
+
+/* 按钮 hover：ornate 下更克制（覆盖 classic 的 scale(1.05)） */
+html[data-motion="ornate"] .control-btn:hover { transform: scale(1.02); }
+
+/* ═══ 加载动画（华丽 / 夸张 / 优雅，仅 ornate）═══
+   封面绽放 → 蕾丝生长 → 蝙蝠点亮（与蕾丝同步）。 */
+html[data-motion="ornate"] .album-cover {
+  transform: scale(0.6);
+  transition: opacity 0.5s var(--motion-easing-standard),
+              transform 1.15s cubic-bezier(0.34, 1.8, 0.64, 1);
+}
+html[data-motion="ornate"] .entered .album-cover { transform: scale(1); }
+
+/* 蕾丝边：沿四边生长 + 淡入 */
+html[data-motion="ornate"] .album-cover::before {
+  opacity: 0;
+  background-size: 0 3px, 0 3px, 3px 0, 3px 0;
+  transition: opacity 0.9s var(--motion-easing-standard) 0.3s,
+              background-size 1.15s var(--motion-easing-enter);
+}
+html[data-motion="ornate"] .entered .album-cover::before {
+  opacity: 0.55;
+  background-size: 100% 3px, 100% 3px, 3px 100%, 3px 100%;
+}
+/* 蝙蝠：点亮（缩放 + 淡入，与蕾丝同步）+ 闪烁 */
+html[data-motion="ornate"] .album-cover::after {
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 0.8s var(--motion-easing-standard) 0.4s,
+              transform 0.8s cubic-bezier(0.34, 1.4, 0.64, 1) 0.4s;
+}
+html[data-motion="ornate"] .entered .album-cover::after {
+  opacity: 0.7;
+  transform: scale(1);
+  animation: mt-flicker 1.1s var(--motion-easing-standard) 0.4s both, sd-bat 5s ease-in-out 1.5s infinite;
 }
 </style>
 

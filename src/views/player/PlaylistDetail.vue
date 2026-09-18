@@ -57,7 +57,7 @@
       </button>
       <template v-if="multiMode">
         <button class="rc-global-btn" @click="toggleSelectAll"><span>{{ isAllSelected ? '全不选' : '全选' }}</span></button>
-        <button class="rc-global-btn" :class="{ 'delete-warning': confirmHint('__batch__') !== '' }" :style="pulseFor('__batch__')" @click="batchRemove" :disabled="!selectedSet.size" :title="confirmHint('__batch__') || '批量移除'" data-charge-sound>
+        <button class="rc-global-btn" :class="{ 'delete-warning': confirmHint('__batch__') !== '' }" :style="pulseFor('__batch__')" @click.stop="batchRemove" :disabled="!selectedSet.size" :title="confirmHint('__batch__') || '批量移除'" data-charge-sound>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke-width="2"/></svg>
           <span>移除</span>
         </button>
@@ -111,7 +111,7 @@
               <path d="M5 3l14 9-14 9V3z" stroke-width="2"/>
             </svg>
           </button>
-          <button class="song-btn" :class="{ 'delete-warning': confirmHint(item.path) !== '' }" :style="pulseFor(item.path)" @click="removeFromPlaylist(item)" :disabled="!item.exists" :title="confirmHint(item.path) || '从歌单移除'" data-charge-sound>
+          <button class="song-btn" :class="{ 'delete-warning': confirmHint(item.path) !== '' }" :style="pulseFor(item.path)" @click.stop="removeFromPlaylist(item)" @dblclick.stop :disabled="!item.exists" :title="confirmHint(item.path) || '从歌单移除'" data-charge-sound>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke-width="2"/>
             </svg>
@@ -492,6 +492,34 @@ onMounted(async () => { if (!localMusicStore.loaded && !localMusicStore.loading)
 .form-group { margin-bottom: 16px; }
 .form-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
 .modal-footer { display: flex; justify-content: flex-end; gap: 12px; padding: 16px; border-top: 2px solid var(--border-color); }
+
+/* ── 添加歌曲/加入歌单弹窗：四角蝙蝠 ── */
+html[data-motion="ornate"] .modal-content { position: relative; }
+html[data-motion="ornate"] .modal-content::after {
+  content: '';
+  position: absolute; inset: 0;
+  pointer-events: none;
+  background: var(--border-color);
+  -webkit-mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(315 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left top / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(45 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right top / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(225 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left bottom / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(135 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right bottom / 16px 16px no-repeat;
+  mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(315 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left top / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(45 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right top / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(225 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left bottom / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(135 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right bottom / 16px 16px no-repeat;
+  opacity: 0.6;
+  animation: pd-mbat 5s ease-in-out infinite;
+}
+@keyframes pd-mbat {
+  0%, 100% { opacity: 0.7;  background-color: var(--border-color); }
+  20%      { opacity: 0.18; background-color: var(--border-color); }
+  40%      { opacity: 0.85; background-color: #c0392b; }
+  62%      { opacity: 0.25; background-color: var(--border-color); }
+  82%      { opacity: 0.9;  background-color: #c0392b; }
+}
 .btn-cancel, .btn-confirm { padding: 6px 16px; border: 2px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); cursor: pointer; font-size: 13px; transition: var(--motion-btn-hover); }
 .btn-cancel:hover, .btn-confirm:hover { background: var(--btn-hover-bg); color: var(--btn-hover-text); }
 .btn-confirm { background: var(--border-color); color: var(--bg-primary); }
@@ -584,4 +612,199 @@ onMounted(async () => { if (!localMusicStore.loaded && !localMusicStore.loading)
               transform var(--motion-duration-fast) var(--motion-easing-standard);
 }
 .entered .song-item { opacity: 1; transform: translateX(0); }
+
+/* ══ Ornate：歌曲列表项（对齐 PlayStats 样板）══ */
+html[data-motion="ornate"] .song-item {
+  opacity: 0; transform: scaleX(0);
+  transform-origin: center;
+  transition: opacity var(--motion-duration-fast) var(--motion-easing-standard),
+              transform var(--motion-duration-slow) var(--motion-easing-enter);
+}
+html[data-motion="ornate"] .entered .song-item { opacity: 1; transform: scaleX(1); }
+
+html[data-motion="ornate"] .song-item::before,
+html[data-motion="ornate"] .song-item:hover::before { display: none; }
+html[data-motion="ornate"] .song-item::after {
+  content: '';
+  position: absolute; inset: 0 -18px; z-index: -1;
+  pointer-events: none;
+  background-color: #c0392b;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23fff' transform='rotate(90 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23fff' transform='rotate(-90 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat, no-repeat;
+  background-position: left center, right center;
+  background-size: auto 100%, auto 100%;
+  clip-path: inset(0 50% 0 50%);
+  opacity: 0;
+  transition: opacity 0s, clip-path var(--motion-duration-glacial) var(--motion-easing-enter);
+}
+html[data-motion="ornate"] .song-item:hover::after {
+  opacity: 1;
+  clip-path: inset(0 0 0 0);
+}
+
+/* ══ Ornate：详情头部 + 封面方块装饰（对齐 PlayStats 样板）══ */
+
+/* ── 鸢尾花纹（明暗两套，根 .playlist-detail.theme-dark 切换） ── */
+html[data-motion="ornate"] .playlist-detail {
+  --pd-deco: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='%23000'%3E%3Cpath d='M50 4 C45 20 37 28 26 32 C17 36 13 45 16 53 C19 61 28 64 34 61 C27 57 25 50 29 45 C33 40 42 43 46 52 C48 57 49 63 50 70 C51 63 52 57 54 52 C58 43 67 40 71 45 C75 50 73 57 66 61 C72 64 81 61 84 53 C87 45 83 36 74 32 C63 28 55 20 50 4 Z'/%3E%3Crect x='26' y='74' width='48' height='9'/%3E%3C/g%3E%3C/svg%3E");
+}
+html[data-motion="ornate"] .playlist-detail.theme-dark {
+  --pd-deco: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='%23fff'%3E%3Cpath d='M50 4 C45 20 37 28 26 32 C17 36 13 45 16 53 C19 61 28 64 34 61 C27 57 25 50 29 45 C33 40 42 43 46 52 C48 57 49 63 50 70 C51 63 52 57 54 52 C58 43 67 40 71 45 C75 50 73 57 66 61 C72 64 81 61 84 53 C87 45 83 36 74 32 C63 28 55 20 50 4 Z'/%3E%3Crect x='26' y='74' width='48' height='9'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* ── 详情头部：蕾丝内衬 + 左侧 3 鸢尾（inset 6px，5px 密度） ── */
+html[data-motion="ornate"] .detail-header::before {
+  content: '';
+  position: absolute; inset: 6px;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(90deg, var(--border-color) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(90deg, var(--border-color) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(0deg, var(--border-color) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(0deg, var(--border-color) 0 1px, transparent 1px 5px),
+    var(--pd-deco), var(--pd-deco), var(--pd-deco);
+  background-repeat: no-repeat;
+  background-size: 100% 3px, 100% 3px, 3px 100%, 3px 100%, 14px 14px, 14px 14px, 14px 14px;
+  background-position: 0 0, 0 100%, 0 0, 100% 0, 12px 20%, 12px 50%, 12px 80%;
+  opacity: 0;
+  animation: pd-lace 8s linear infinite;
+  transition: opacity 0.9s var(--motion-easing-standard) 0.3s;
+}
+html[data-motion="ornate"] .entered .detail-header::before { opacity: 0.5; }
+
+/* 标题两侧对称点缀（与设置页一致：3 圆点 + 双短线 + 双小弧） */
+html[data-motion="ornate"] .detail-header .playlist-text h2::before,
+html[data-motion="ornate"] .detail-header .playlist-text h2::after {
+  content: '';
+  display: inline-block;
+  width: 92px; height: 14px;
+  vertical-align: middle;
+  margin: 0 14px;
+  opacity: 0;
+  transform: scaleX(0);
+  transform-origin: center;
+  background:
+    radial-gradient(circle, var(--border-color) 2px, transparent 2.5px) left center / 6px 6px no-repeat,
+    radial-gradient(circle, var(--border-color) 2px, transparent 2.5px) center center / 6px 6px no-repeat,
+    radial-gradient(circle, var(--border-color) 2px, transparent 2.5px) right center / 6px 6px no-repeat,
+    linear-gradient(90deg, var(--border-color), var(--border-color)) left 3px / 28px 1px no-repeat,
+    linear-gradient(90deg, var(--border-color), var(--border-color)) right 4px / 28px 1px no-repeat,
+    conic-gradient(from 200deg, var(--border-color) 0 50deg, transparent 50deg 360deg) 30px center / 12px 12px no-repeat,
+    conic-gradient(from 110deg, var(--border-color) 0 50deg, transparent 50deg 360deg) calc(100% - 30px) center / 12px 12px no-repeat;
+  transition: opacity 0.8s var(--motion-easing-standard) 0.4s,
+              transform 0.8s var(--motion-easing-enter) 0.4s;
+}
+html[data-motion="ornate"] .entered .detail-header .playlist-text h2::before,
+html[data-motion="ornate"] .entered .detail-header .playlist-text h2::after {
+  opacity: 0.75;
+  transform: scaleX(1);
+}
+@keyframes pd-lace {
+  0%   { background-position: 0 0, 0 100%, 0 0, 100% 0, 12px 20%, 12px 50%, 12px 80%; }
+  100% { background-position: 7px 0, -7px 100%, 0 -7px, 100% 7px, 12px 20%, 12px 50%, 12px 80%; }
+}
+
+@keyframes pd-bat {
+  0%, 100% { opacity: 0.7;  background-color: var(--border-color); }
+  20%      { opacity: 0.18; background-color: var(--border-color); }
+  40%      { opacity: 0.85; background-color: #c0392b; }
+  62%      { opacity: 0.25; background-color: var(--border-color); }
+  82%      { opacity: 0.9;  background-color: #c0392b; }
+}
+
+/* ── 封面方块：蕾丝内衬（inset 3px，7px 密度） ── */
+html[data-motion="ornate"] .playlist-cover { position: relative; }
+html[data-motion="ornate"] .playlist-cover::before {
+  content: '';
+  position: absolute; inset: 3px;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(90deg, var(--border-color) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(90deg, var(--border-color) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(0deg, var(--border-color) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(0deg, var(--border-color) 0 1px, transparent 1px 7px);
+  background-repeat: no-repeat;
+  background-size: 100% 3px, 100% 3px, 3px 100%, 3px 100%;
+  background-position: 0 0, 0 100%, 0 0, 100% 0;
+  opacity: 0;
+  animation: pd-lace 8s linear infinite;
+  transition: opacity 0.9s var(--motion-easing-standard) 0.3s;
+}
+html[data-motion="ornate"] .entered .playlist-cover::before { opacity: 0.4; }
+
+/* ── 封面方块：四角蝙蝠（缩放入场 + 闪烁 + 偶发变红） ── */
+html[data-motion="ornate"] .playlist-cover::after {
+  content: '';
+  position: absolute; inset: 0;
+  pointer-events: none;
+  background: var(--border-color);
+  -webkit-mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(315 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left top / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(45 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right top / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(225 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left bottom / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(135 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right bottom / 16px 16px no-repeat;
+  mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(315 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left top / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(45 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right top / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(225 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left bottom / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(135 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right bottom / 16px 16px no-repeat;
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 0.8s var(--motion-easing-standard) 0.4s,
+              transform 0.8s cubic-bezier(0.34, 1.4, 0.64, 1) 0.4s;
+}
+html[data-motion="ornate"] .entered .playlist-cover::after {
+  opacity: 0.65;
+  transform: scale(1);
+  animation: pd-bat 5s ease-in-out infinite;
+}
+
+/* 按钮：hover 反色 + 四边 currentColor 延展（对齐设置页） */
+html[data-motion="ornate"] .back-btn,
+html[data-motion="ornate"] .detail-toolbar .rc-global-btn { position: relative; }
+html[data-motion="ornate"] .back-btn::before,
+html[data-motion="ornate"] .detail-toolbar .rc-global-btn::before {
+  content: '';
+  position: absolute; inset: 1px;
+  pointer-events: none;
+  background:
+    linear-gradient(currentColor, currentColor) left top no-repeat,
+    linear-gradient(currentColor, currentColor) right top no-repeat,
+    linear-gradient(currentColor, currentColor) left bottom no-repeat,
+    linear-gradient(currentColor, currentColor) right bottom no-repeat,
+    linear-gradient(currentColor, currentColor) left top no-repeat,
+    linear-gradient(currentColor, currentColor) left bottom no-repeat,
+    linear-gradient(currentColor, currentColor) right top no-repeat,
+    linear-gradient(currentColor, currentColor) right bottom no-repeat;
+  background-size: 0 2px, 0 2px, 0 2px, 0 2px, 2px 0, 2px 0, 2px 0, 2px 0;
+  transition: background-size var(--motion-time-interaction) var(--motion-easing-standard);
+}
+html[data-motion="ornate"] .back-btn:hover::before,
+html[data-motion="ornate"] .detail-toolbar .rc-global-btn:hover::before {
+  background-size: 45% 2px, 45% 2px, 45% 2px, 45% 2px, 2px 45%, 2px 45%, 2px 45%, 2px 45%;
+}
+
+/* ══ Ornate：歌曲列表小按钮四边 currentColor 延展 ══ */
+html[data-motion="ornate"] .song-btn { position: relative; }
+html[data-motion="ornate"] .song-btn::before {
+  content: '';
+  position: absolute; inset: 1px;
+  pointer-events: none;
+  background:
+    linear-gradient(currentColor, currentColor) left top no-repeat,
+    linear-gradient(currentColor, currentColor) right top no-repeat,
+    linear-gradient(currentColor, currentColor) left bottom no-repeat,
+    linear-gradient(currentColor, currentColor) right bottom no-repeat,
+    linear-gradient(currentColor, currentColor) left top no-repeat,
+    linear-gradient(currentColor, currentColor) left bottom no-repeat,
+    linear-gradient(currentColor, currentColor) right top no-repeat,
+    linear-gradient(currentColor, currentColor) right bottom no-repeat;
+  background-size: 0 2px, 0 2px, 0 2px, 0 2px, 2px 0, 2px 0, 2px 0, 2px 0;
+  transition: background-size var(--motion-time-interaction) var(--motion-easing-standard);
+}
+html[data-motion="ornate"] .song-btn:hover::before {
+  background-size: 45% 2px, 45% 2px, 45% 2px, 45% 2px, 2px 45%, 2px 45%, 2px 45%, 2px 45%;
+}
 </style>

@@ -2,7 +2,7 @@
   <div class="settings-page" :class="[themeClass, { entered }]">
     <div class="sp-header">
       <h2>设置</h2>
-      <p class="sp-desc">偏好设置与音频均衡器</p>
+      <p class="sp-desc">系统与偏好设置</p>
     </div>
 
     <div class="sp-body">
@@ -32,12 +32,73 @@
         </button>
       </div>
 
-      <div class="sp-actions">
-        <button class="sp-action-btn" @click="handleBackup">保存数据（备份）</button>
-        <button class="sp-action-btn" @click="handleRestore">加载数据（恢复）</button>
-        <button class="sp-action-btn sp-danger" @click="handleClearAll" data-charge-sound>清除所有数据</button>
-        <button class="sp-action-btn" @click="showAbout = true">关于 Rhizome</button>
+      <div class="report-card">
+        <div class="report-card-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/></svg>
+          <span>数据管理</span>
+        </div>
+        <div class="report-types">
+          <button class="report-type-btn data-save" @click="handleBackup">
+            <span class="report-type-icon">存</span>
+            <span class="report-type-label">保存数据</span>
+          </button>
+          <button class="report-type-btn data-load" @click="handleRestore">
+            <span class="report-type-icon">读</span>
+            <span class="report-type-label">加载数据</span>
+          </button>
+          <button class="report-type-btn data-del" @click="handleClearAll" data-charge-sound>
+            <span class="report-type-icon">删</span>
+            <span class="report-type-label">清除数据</span>
+          </button>
+        </div>
       </div>
+
+
+      <div class="report-card">
+        <div class="report-card-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span>系统选项</span>
+        </div>
+        <div class="sys-options">
+          <div class="sys-option">
+            <span class="sys-option-label">开机自启</span>
+            <span class="sys-option-toggle">
+              <button class="tab-toggle" :class="{ active: !autoLaunch }" @click="setAutoLaunch(false)">关</button>
+              <button class="tab-toggle" :class="{ active: autoLaunch }" @click="setAutoLaunch(true)">开</button>
+            </span>
+          </div>
+          <div class="sys-option">
+            <span class="sys-option-label">自动歌单</span>
+            <span class="sys-option-toggle">
+              <button class="tab-toggle" :class="{ active: !weeklyEnabled }" @click="setWeeklyOn(false)">关</button>
+              <button class="tab-toggle" :class="{ active: weeklyEnabled }" @click="setWeeklyOn(true)">开</button>
+            </span>
+          </div>
+          <div class="sys-option">
+            <span class="sys-option-label">互动音效</span>
+            <span class="sys-option-toggle">
+              <button class="tab-toggle" :class="{ active: !soundEnabled }" @click="setSoundOn(false)">关</button>
+              <button class="tab-toggle" :class="{ active: soundEnabled }" @click="setSoundOn(true)">开</button>
+            </span>
+          </div>
+          <div class="sys-option">
+            <span class="sys-option-label">屏保开关</span>
+            <span class="sys-option-toggle">
+              <button class="tab-toggle" :class="{ active: !screensaverEnabled }" @click="setScreensaverEnabled(false)">关</button>
+              <button class="tab-toggle" :class="{ active: screensaverEnabled }" @click="setScreensaverEnabled(true)">开</button>
+            </span>
+          </div>
+          <div class="sys-option">
+            <span class="sys-option-label">自动报告</span>
+            <span class="sys-option-toggle">
+              <button class="tab-toggle" :class="{ active: !reportAuto }" @click="setReportAuto(false)">关</button>
+              <button class="tab-toggle" :class="{ active: reportAuto }" @click="setReportAuto(true)">开</button>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <button class="sp-action-btn" @click="showAbout = true">关于 Rhizome</button>
       </div>
 
       <!-- 右侧：选项卡 + 内容 -->
@@ -45,7 +106,10 @@
 
       <div class="sp-tabs">
         <div class="sp-tab" :class="{ active: activeSection === 'system' }" @click="activeSection = 'system'">
-          <span>系统选项</span>
+          <span>详细配置</span>
+        </div>
+        <div class="sp-tab" :class="{ active: activeSection === 'appearance' }" @click="activeSection = 'appearance'">
+          <span>外观</span>
         </div>
         <div class="sp-tab" :class="{ active: activeSection === 'shortcuts' }" @click="activeSection = 'shortcuts'">
           <span>快捷键</span>
@@ -109,27 +173,9 @@
           </span>
         </div>
         <div class="ss-row">
-          <span class="ss-cell-label">开机自启</span>
-          <span class="ss-cell-value">
-            <button class="sp-btn toggle-btn" :class="{ active: autoLaunch }" @click="toggleAutoLaunch">{{ autoLaunch ? 'ON' : 'OFF' }}</button>
-          </span>
-        </div>
-        <div class="ss-row">
-          <span class="ss-cell-label">每周自动歌单</span>
-          <span class="ss-cell-value">
-            <button class="sp-btn toggle-btn" :class="{ active: weeklyEnabled }" @click="toggleWeekly">{{ weeklyEnabled ? 'ON' : 'OFF' }}</button>
-          </span>
-        </div>
-        <div class="ss-row">
           <span class="ss-cell-label">报告路径</span>
           <span class="ss-cell-value">
             <button class="sp-btn path-btn" @click="selectReportDir">{{ reportPath || '点击设置路径' }}</button>
-          </span>
-        </div>
-        <div class="ss-row">
-          <span class="ss-cell-label">音效</span>
-          <span class="ss-cell-value">
-            <button class="sp-btn toggle-btn" :class="{ active: soundEnabled }" @click="toggleSound">{{ soundEnabled ? 'ON' : 'OFF' }}</button>
           </span>
         </div>
         <div class="ss-row">
@@ -149,11 +195,25 @@
       </div>
       </div>
 
+          <div v-else-if="activeSection === 'appearance'" class="sp-panel-card" key="appearance">
+      <div class="sys-options appearance-options">
+        <div class="sys-option">
+          <span class="sys-option-label">主题</span>
+          <span class="sys-option-toggle">
+            <button v-for="t in themes" :key="t.id" class="tab-toggle" :class="{ active: themeId === t.id }" @click="setTheme(t.id)">{{ t.label }}</button>
+          </span>
+        </div>
+        <div class="sys-option">
+          <span class="sys-option-label">动画方案</span>
+          <span class="sys-option-toggle">
+            <button v-for="m in motionSchemes" :key="m.id" class="tab-toggle" :class="{ active: motionId === m.id }" @click="setMotion(m.id)">{{ m.label }}</button>
+          </span>
+        </div>
+      </div>
+      </div>
+
 
           <div v-else-if="activeSection === 'shortcuts'" class="sp-panel-card" key="shortcuts">
-      <div class="sp-panel-bar">
-        <button class="sp-btn" style="width:auto;padding:0 10px;font-size:10px" @click="resetSC">重置</button>
-      </div>
       <div class="ss-inline-table">
         <div class="ss-row ss-row-head">
           <span class="ss-cell-label">操作</span>
@@ -167,13 +227,13 @@
         </div>
       </div>
       <div class="ss-capture" v-if="capturing">捕获按键：{{ captureDisplay || '等待...' }} <button class="sp-btn" style="width:auto;padding:0 8px;font-size:10px" @click="confirmCapture">确认</button></div>
+      <div class="sp-panel-bar" v-if="shortcutsModified">
+        <button class="sp-btn" style="width:auto;padding:0 10px;font-size:10px" @click="resetSC">重置</button>
+      </div>
       </div>
 
 
           <div v-else-if="activeSection === 'actions'" class="sp-panel-card" key="actions">
-      <div class="sp-panel-bar">
-        <button class="sp-btn" style="width:auto;padding:0 10px;font-size:10px" @click="startAddChain" :disabled="acChains.length >= 5">+ 创建</button>
-      </div>
       <div class="ac-list" v-if="acChains.length">
         <div class="ac-item" v-for="(c, ci) in acChains" :key="c.id">
           <span class="ac-key">Alt+{{ ci + 1 }}</span>
@@ -184,7 +244,8 @@
           <button class="sp-btn" style="width:auto;padding:0 6px;font-size:10px" @click="removeChain(c.id)">×</button>
         </div>
       </div>
-      <div class="ac-empty" v-else>暂无动作链，点击 + 创建（上限 5 个）</div>
+      <div class="ac-empty" v-else>暂无动作链（上限 5 个）</div>
+      <button v-if="!editing && acChains.length < 5" class="report-generate-btn ac-create-btn" @click="startAddChain">+ 创建</button>
       <div class="ac-editor" v-if="editing">
         <div class="ac-edit-row"><span>名称</span><input class="ac-input" v-model="editName" /></div>
         <div class="ac-actions-list">
@@ -225,22 +286,25 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { usePageEnter } from '@/composables/usePageEnter'
 import { useGlobalTheme } from '@/composables/useGlobalTheme'
+import { useMotionScheme } from '@/composables/useMotionScheme'
 import { useLocalMusicStore } from '@/stores/localMusicStore'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useAudioDevice } from '@/composables/useAudioDevice'
-import { isWeeklyEnabled, setWeeklyEnabled, checkAndGenerateWeekly } from '@/composables/useWeeklyPlaylists'
+import { isWeeklyEnabled, setWeeklyEnabled, checkAndGenerateAuto } from '@/composables/useWeeklyPlaylists'
 import { generateReportForType } from '@/composables/useReportGenerator'
 import { REPORT_TYPES, getReportRangeStart, countPlaysSince, getPlayHistory } from '@/utils/report'
 import { getActionDefs, getShortcutConfig, comboLabel, updateShortcut, resetShortcuts } from '@/composables/useShortcuts'
+import { SHORTCUT_DEFAULTS } from '@/constants/defaults'
 import { useActionChain, ACTION_TYPES } from '@/composables/useActionChain'
 import { useDeleteConfirm } from '@/composables/useDeleteConfirm'
 import { useLyricOffset } from '@/composables/useLyricOffset'
 import AboutModal from '@/components/common/AboutModal.vue'
-import { K_LYRIC_SIZE, K_LYRIC_ALIGN, K_REPORT_PATH, K_DESKTOP_LYRICS_BG } from '@/constants/storage-keys'
-import { idleTimeoutSec, setIdleTimeout } from '@/composables/useIdleTimeout'
+import { K_LYRIC_SIZE, K_LYRIC_ALIGN, K_REPORT_PATH, K_DESKTOP_LYRICS_BG, K_REPORT_AUTO } from '@/constants/storage-keys'
+import { idleTimeoutSec, setIdleTimeout, screensaverEnabled, setScreensaverEnabled } from '@/composables/useIdleTimeout'
 import { playShortcutSound, isSoundEnabled, setSoundEnabled, getSoundVolume, setSoundVolume } from '@/composables/useSound'
 
-const { themeClass } = useGlobalTheme()
+const { themeClass, themes, themeId, setTheme } = useGlobalTheme()
+const { schemes: motionSchemes, motionId, setMotion } = useMotionScheme()
 const localStore = useLocalMusicStore()
 const playerStore = usePlayerStore()
 const { devices: audioDevices, selectedId: audioDeviceId, select: selectDevice, applyTo } = useAudioDevice()
@@ -255,6 +319,22 @@ const activeSection = ref('system')
 
 const shortcutDefs = getActionDefs()
 const shortcutConfig = ref(getShortcutConfig())
+// 快捷键是否被修改过（与默认值不同）——未修改时不显示「重置」
+const shortcutsModified = computed(() => {
+  const cfg = shortcutConfig.value || {}
+  for (const action of Object.keys(SHORTCUT_DEFAULTS)) {
+    const def = SHORTCUT_DEFAULTS[action]
+    const cur = cfg[action] || {}
+    for (const scope of ['local', 'global']) {
+      const d = def[scope]
+      if (!d) continue
+      const c = cur[scope]
+      if (!c) return true
+      if (d.code !== c.code || !!d.ctrl !== !!c.ctrl || !!d.shift !== !!c.shift || !!d.alt !== !!c.alt) return true
+    }
+  }
+  return false
+})
 const capturing = ref(false)
 const captureDisplay = ref('')
 const captureTarget = ref(null)
@@ -286,6 +366,16 @@ const weeklyEnabled = ref(isWeeklyEnabled())
 const reportPath = ref(localStorage.getItem(K_REPORT_PATH) || '')
 const soundEnabled = ref(isSoundEnabled())
 const soundVolume = ref(getSoundVolume())
+const reportAuto = ref(localStorage.getItem(K_REPORT_AUTO) !== 'false')
+async function setReportAuto(v) {
+  // 开启自动报告但未设置路径时，强制用户设置；取消则保持关闭
+  if (v && !reportPath.value) {
+    const dir = await selectReportDir()
+    if (!dir) return
+  }
+  reportAuto.value = v
+  localStorage.setItem(K_REPORT_AUTO, String(v))
+}
 const reportType = ref('daily')
 const reportTypes = REPORT_TYPES.map(t => ({ key: t.key, label: t.label, icon: t.label.charAt(0) }))
 const reportStats = computed(() => {
@@ -323,17 +413,16 @@ function startIdleTimeout(d) {
 }
 function stopIdleTimeout() { clearInterval(idleTimeoutTimer) }
 
-async function toggleAutoLaunch() {
-  autoLaunch.value = !autoLaunch.value
-  window.electron?.setAutoLaunch?.(autoLaunch.value)
+async function setAutoLaunch(v) {
+  autoLaunch.value = v
+  window.electron?.setAutoLaunch?.(v)
 }
 
-function toggleWeekly() {
-  weeklyEnabled.value = !weeklyEnabled.value
-  setWeeklyEnabled(weeklyEnabled.value)
-  if (weeklyEnabled.value) {
-    checkAndGenerateWeekly(localStore.songList)
-  }
+function setWeeklyOn(v) {
+  weeklyEnabled.value = v
+  setWeeklyEnabled(v)
+  // 开启瞬间强制更新（覆盖旧数据）
+  if (v) checkAndGenerateAuto(localStore.songList, true)
 }
 
 function onDeviceChange() {
@@ -345,11 +434,12 @@ function onDeviceChange() {
 async function selectReportDir() {
   const dir = await window.electron?.selectReportDir?.()
   if (dir) { reportPath.value = dir; localStorage.setItem(K_REPORT_PATH, dir) }
+  return dir || ''
 }
 
-function toggleSound() {
-  soundEnabled.value = !soundEnabled.value
-  setSoundEnabled(soundEnabled.value)
+function setSoundOn(v) {
+  soundEnabled.value = v
+  setSoundEnabled(v)
 }
 function changeSoundVolume(d) {
   soundVolume.value = Math.max(0, Math.min(1, Math.round((soundVolume.value + d) * 100) / 100))
@@ -410,8 +500,12 @@ async function handleRestore() {
 async function handleGenerateReport() {
   const result = await generateReportForType(reportType.value, localStore.songList, themeClass.value === 'theme-dark')
   if (!result) { msg.value = '无播放数据可生成'; setTimeout(() => msg.value = '', 1500); return }
-  const dir = reportPath.value
-  if (!dir) { msg.value = '请先设置报告路径'; setTimeout(() => msg.value = '', 1500); return }
+  // 有路径则直接生成；否则弹窗让用户选择目录
+  let dir = reportPath.value
+  if (!dir) {
+    dir = await selectReportDir()
+    if (!dir) { msg.value = '未选择报告路径'; setTimeout(() => msg.value = '', 1500); return }
+  }
   const { blob, filename } = result
   const reader = new FileReader()
   reader.onload = async () => {
@@ -448,7 +542,7 @@ onUnmounted(() => { window.removeEventListener('keydown', onKeydown, true) })
 .settings-page::-webkit-scrollbar { display: none; }
 
 /* ═══ 页头 ═══ */
-.sp-header { padding: 20px 16px 16px; border-bottom: 2px solid transparent; position: relative; }
+.sp-header { padding: 16px; border-bottom: 2px solid transparent; position: relative; }
 .sp-header::after { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 2px; background: var(--border-color); transform: scaleX(0); transition: transform var(--motion-duration-slow) var(--motion-easing-enter); }
 .entered .sp-header::after { transform: scaleX(1); }
 .sp-header h2 { font-size: 20px; margin: 0 0 4px; }
@@ -502,6 +596,7 @@ onUnmounted(() => { window.removeEventListener('keydown', onKeydown, true) })
 .sp-tab:nth-child(1) { transition-delay: 0.24s; }
 .sp-tab:nth-child(2) { transition-delay: 0.27s; }
 .sp-tab:nth-child(3) { transition-delay: 0.30s; }
+.sp-tab:nth-child(4) { transition-delay: 0.33s; }
 .sp-tab:last-child { border-right: none; }
 .sp-tab:hover { background: var(--bg-secondary); }
 .sp-tab.active { background: var(--btn-hover-bg); color: var(--btn-hover-text); transition-delay: 0s !important; }
@@ -558,6 +653,34 @@ onUnmounted(() => { window.removeEventListener('keydown', onKeydown, true) })
 }
 .report-type-btn:hover { background: var(--btn-hover-bg); color: var(--btn-hover-text); }
 .report-type-btn.active { background: var(--btn-hover-bg); color: var(--btn-hover-text); }
+
+/* 数据管理三按钮：动效颜色区分（保存=绿 / 加载=蓝 / 清除=红） */
+.report-type-btn.data-save:hover, .report-type-btn.data-save:active { background: #2e7d32; border-color: #2e7d32; color: #fff; }
+.report-type-btn.data-load:hover, .report-type-btn.data-load:active { background: #1976d2; border-color: #1976d2; color: #fff; }
+.report-type-btn.data-del:hover, .report-type-btn.data-del:active { background: #c62828; border-color: #c62828; color: #fff; }
+
+/* 选项卡式单选开关（关 | 开） */
+.tab-toggle {
+  height: 28px; padding: 0 16px;
+  border: 2px solid var(--border-color);
+  background: var(--bg-secondary); color: var(--text-primary);
+  font-size: 12px; font-family: monospace; cursor: pointer;
+}
+.tab-toggle:not(:first-child) { border-left: none; }
+/* 抵消 .ss-cell-value 的 gap，使「关 | 开」连为一个整体 */
+.ss-cell-value .tab-toggle + .tab-toggle { margin-left: -4px; }
+.tab-toggle:hover { background: var(--btn-hover-bg); color: var(--btn-hover-text); }
+.tab-toggle.active { background: var(--btn-hover-bg); color: var(--btn-hover-text); }
+
+/* 系统选项：横向排列的四组开关 */
+.sys-options { display: flex; flex-wrap: wrap; gap: 12px 22px; }
+/* 外观选项卡：标题与按钮组纵向排列；按钮组靠右，四周间隔参考系统选项 */
+.appearance-options { flex-direction: column; flex-wrap: nowrap; gap: 14px; padding: 12px 16px; }
+.appearance-options .sys-option { gap: 14px; justify-content: space-between; }
+.appearance-options .sys-option-label { min-width: 60px; }
+.sys-option { display: flex; align-items: center; gap: 8px; }
+.sys-option-label { font-size: 12px; opacity: 0.8; white-space: nowrap; }
+.sys-option-toggle { display: flex; }
 .report-type-icon {
   font-size: 14px; font-weight: 700; width: 20px; text-align: center;
 }
@@ -579,7 +702,7 @@ onUnmounted(() => { window.removeEventListener('keydown', onKeydown, true) })
 
 /* ═══ 操作按钮 ═══ */
 .sp-actions { display: flex; flex-direction: column; gap: 6px; }
-.sp-action-btn { width: 100%; height: 34px; border: 2px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 12px; font-family: monospace; cursor: pointer; text-align: left; padding: 0 14px; opacity: 0; transform: scaleX(0); transition: opacity var(--motion-duration-micro) var(--motion-easing-ease), transform var(--motion-duration-btn-transform) var(--motion-easing-enter); }
+.sp-action-btn { width: 100%; height: 34px; border: 2px solid var(--border-color); background: var(--btn); color: var(--text); font-size: 12px; font-family: monospace; cursor: pointer; text-align: left; padding: 0 14px; opacity: 0; transform: scaleX(0); transition: opacity var(--motion-duration-micro) var(--motion-easing-ease), transform var(--motion-duration-btn-transform) var(--motion-easing-enter); }
 .entered .sp-action-btn { opacity: 1; transform: scaleX(1); }
 .sp-action-btn:hover { background: var(--btn-hover-bg); color: var(--btn-hover-text); transition: background var(--motion-duration-normal), color var(--motion-duration-normal); }
 .sp-danger:hover { background: #f44336; color: #fff; border-color: #f44336; }
@@ -612,6 +735,8 @@ onUnmounted(() => { window.removeEventListener('keydown', onKeydown, true) })
 .ac-empty { font-size: 11px; font-family: monospace; padding: 8px 0; }
 
 .ac-editor { margin-top: 8px; padding: 8px; border: 2px solid var(--border-color); background: var(--bg-secondary); }
+/* 动作链创建入口：与项目等宽、主题反色（复用报告生成按钮样式），直接位于内容区 */
+.ac-create-btn { margin-top: 8px; border-style: dashed; }
 .ac-edit-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 11px; font-family: monospace; }
 .ac-input { flex: 1; height: 24px; padding: 0 6px; border: 2px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-size: 11px; font-family: monospace; outline: none; min-width: 100px; }
 .ac-actions-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
@@ -619,10 +744,251 @@ onUnmounted(() => { window.removeEventListener('keydown', onKeydown, true) })
 .ac-param { width: 56px; height: 24px; padding: 0 4px; border: 2px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-size: 10px; font-family: monospace; outline: none; text-align: center; }
 .ac-edit-btns { display: flex; gap: 6px; margin-top: 8px; }
 
-/* ═══ 精确延迟 ═══ */
-.report-card { transition-delay: 0.22s; }
-.sp-action-btn:nth-child(1) { transition-delay: 0.30s; }
-.sp-action-btn:nth-child(2) { transition-delay: 0.33s; }
-.sp-action-btn:nth-child(3) { transition-delay: 0.36s; }
-.sp-action-btn:nth-child(4) { transition-delay: 0.39s; }
+/* 注：Ornate 的页面装饰已废弃（ornate = 更慢的动效节奏 + 界面几何重构转场）。 */
+
+/* ═══ Motion System：设置页动效（仅「华丽」动画方案生效）═══
+   只加伪元素，不改既有样式；绝对定位 + background-* + pointer-events: none（不改布局、不影响功能）。 */
+
+/* 报告卡片：蕾丝边（四边短线），缓慢流动（Lolita 装帧） */
+html[data-motion="ornate"] .report-card { position: relative; }
+html[data-motion="ornate"] .report-card::before {
+  content: '';
+  position: absolute; inset: 3px;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(90deg, var(--border-color) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(90deg, var(--border-color) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(0deg, var(--border-color) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(0deg, var(--border-color) 0 1px, transparent 1px 7px);
+  background-repeat: no-repeat;
+  background-size: 100% 3px, 100% 3px, 3px 100%, 3px 100%;
+  background-position: 0 0, 0 100%, 0 0, 100% 0;
+  opacity: 0.5;
+  animation: sp-lace 8s linear infinite;
+}
+@keyframes sp-lace {
+  0%   { background-position: 0 0, 0 100%, 0 0, 100% 0; }
+  100% { background-position: 7px 0, -7px 100%, 0 -7px, 100% 7px; }
+}
+/* 页头蕾丝 + 框内两侧鸢尾（10 层）：只让前 4 层蕾丝流动，后 6 层鸢尾静止 */
+@keyframes sp-lace-full {
+  0%   { background-position: 0 0, 0 100%, 0 0, 100% 0, 12px 20%, 12px 50%, 12px 80%, calc(100% - 12px) 20%, calc(100% - 12px) 50%, calc(100% - 12px) 80%; }
+  100% { background-position: 7px 0, -7px 100%, 0 -7px, 100% 7px, 12px 20%, 12px 50%, 12px 80%, calc(100% - 12px) 20%, calc(100% - 12px) 50%, calc(100% - 12px) 80%; }
+}
+/* 框内两侧鸢尾：闪烁 */
+@keyframes sp-side-flicker {
+  0%, 100% { opacity: 0.55; filter: none; }
+  24%      { opacity: 0.9;  filter: none; }
+  50%      { opacity: 0.3;  filter: none; }
+  70%      { opacity: 0.85; filter: none; }
+  88%      { opacity: 0.62; filter: none; }
+}
+
+/* 选项卡：hover / 激活时四条边从角向中点延展（反色 currentColor，仿 SongDetail 控制按钮） */
+html[data-motion="ornate"] .sp-tab { position: relative; }
+html[data-motion="ornate"] .sp-tab::before {
+  content: '';
+  position: absolute; inset: 1px;
+  pointer-events: none;
+  background:
+    linear-gradient(currentColor, currentColor) left top no-repeat,
+    linear-gradient(currentColor, currentColor) right top no-repeat,
+    linear-gradient(currentColor, currentColor) left bottom no-repeat,
+    linear-gradient(currentColor, currentColor) right bottom no-repeat,
+    linear-gradient(currentColor, currentColor) left top no-repeat,
+    linear-gradient(currentColor, currentColor) left bottom no-repeat,
+    linear-gradient(currentColor, currentColor) right top no-repeat,
+    linear-gradient(currentColor, currentColor) right bottom no-repeat;
+  background-size: 0 2px, 0 2px, 0 2px, 0 2px, 2px 0, 2px 0, 2px 0, 2px 0;
+  transition: background-size var(--motion-time-interaction) var(--motion-easing-standard);
+}
+html[data-motion="ornate"] .sp-tab:hover::before,
+html[data-motion="ornate"] .sp-tab.active::before {
+  background-size: 45% 2px, 45% 2px, 45% 2px, 45% 2px, 2px 45%, 2px 45%, 2px 45%, 2px 45%;
+}
+
+/* 卡片 —— 四角蝙蝠剪影（闪烁明暗） */
+html[data-motion="ornate"] .report-card::after,
+html[data-motion="ornate"] .sp-panel-card::after {
+  content: '';
+  position: absolute; inset: 0;
+  pointer-events: none;
+  background: var(--border-color);
+  -webkit-mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(315 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left top / 20px 20px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(45 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right top / 20px 20px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(225 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left bottom / 20px 20px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(135 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right bottom / 20px 20px no-repeat;
+  mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(315 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left top / 20px 20px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(45 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right top / 20px 20px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(225 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left bottom / 20px 20px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(135 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right bottom / 20px 20px no-repeat;
+  opacity: 0.65;
+  animation: sp-bat 5s ease-in-out infinite;
+}
+@keyframes sp-bat {
+  0%, 100% { opacity: 0.7;  background-color: var(--border-color); }
+  20%      { opacity: 0.18; background-color: var(--border-color); }
+  40%      { opacity: 0.85; background-color: #c0392b; }
+  62%      { opacity: 0.25; background-color: var(--border-color); }
+  82%      { opacity: 0.9;  background-color: #c0392b; }
+}
+html[data-motion="ornate"] .sp-panel-card { position: relative; }
+
+/* ═══ 所有按钮：四边从角向中点延展（反色，参考右侧选项卡）═══ */
+html[data-motion="ornate"] .sp-btn,
+html[data-motion="ornate"] .tab-toggle,
+html[data-motion="ornate"] .report-type-btn,
+html[data-motion="ornate"] .report-generate-btn { position: relative; }
+html[data-motion="ornate"] .sp-btn::before,
+html[data-motion="ornate"] .tab-toggle::before,
+html[data-motion="ornate"] .report-type-btn::before,
+html[data-motion="ornate"] .report-generate-btn::before {
+  content: '';
+  position: absolute; inset: 1px;
+  pointer-events: none;
+  background:
+    linear-gradient(currentColor, currentColor) left top no-repeat,
+    linear-gradient(currentColor, currentColor) right top no-repeat,
+    linear-gradient(currentColor, currentColor) left bottom no-repeat,
+    linear-gradient(currentColor, currentColor) right bottom no-repeat,
+    linear-gradient(currentColor, currentColor) left top no-repeat,
+    linear-gradient(currentColor, currentColor) left bottom no-repeat,
+    linear-gradient(currentColor, currentColor) right top no-repeat,
+    linear-gradient(currentColor, currentColor) right bottom no-repeat;
+  background-size: 0 2px, 0 2px, 0 2px, 0 2px, 2px 0, 2px 0, 2px 0, 2px 0;
+  transition: background-size var(--motion-time-interaction) var(--motion-easing-standard);
+}
+html[data-motion="ornate"] .sp-btn:hover::before,
+html[data-motion="ornate"] .tab-toggle:hover::before,
+html[data-motion="ornate"] .report-type-btn:hover::before,
+html[data-motion="ornate"] .report-generate-btn:hover::before {
+  background-size: 45% 2px, 45% 2px, 45% 2px, 45% 2px, 2px 45%, 2px 45%, 2px 45%, 2px 45%;
+}
+
+/* 按钮 hover 反色（对齐左侧按钮，替代 sp-tab 原浅色底） */
+html[data-motion="ornate"] .sp-tab:hover { background: var(--btn-hover-bg); color: var(--btn-hover-text); }
+
+/* 按钮选中态：四边延展（对齐右侧选项卡 active） */
+html[data-motion="ornate"] .sp-btn.active::before,
+html[data-motion="ornate"] .tab-toggle.active::before,
+html[data-motion="ornate"] .report-type-btn.active::before {
+  background-size: 45% 2px, 45% 2px, 45% 2px, 45% 2px, 2px 45%, 2px 45%, 2px 45%, 2px 45%;
+}
+
+/* 右侧内容区：蕾丝边内衬框（与左侧 report-card 一致） */
+html[data-motion="ornate"] .sp-panel-card::before {
+  content: '';
+  position: absolute; inset: 3px;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(90deg, var(--border-color) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(90deg, var(--border-color) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(0deg, var(--border-color) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(0deg, var(--border-color) 0 1px, transparent 1px 7px);
+  background-repeat: no-repeat;
+  background-size: 100% 3px, 100% 3px, 3px 100%, 3px 100%;
+  background-position: 0 0, 0 100%, 0 0, 100% 0;
+  opacity: 0.4;
+  animation: sp-lace 8s linear infinite;
+}
+
+/* ═══ 页面头：双内衬框（外蕾丝 + 内细线），比普通卡片华丽；inset 留足边距、不外溢 ═══ */
+html[data-motion="ornate"] .sp-header {
+  position: relative;
+  --sp-deco: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='%23000'%3E%3Cpath d='M50 4 C45 20 37 28 26 32 C17 36 13 45 16 53 C19 61 28 64 34 61 C27 57 25 50 29 45 C33 40 42 43 46 52 C48 57 49 63 50 70 C51 63 52 57 54 52 C58 43 67 40 71 45 C75 50 73 57 66 61 C72 64 81 61 84 53 C87 45 83 36 74 32 C63 28 55 20 50 4 Z'/%3E%3Crect x='26' y='74' width='48' height='9'/%3E%3C/g%3E%3C/svg%3E");
+}
+html[data-motion="ornate"] .theme-dark .sp-header {
+  --sp-deco: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='%23fff'%3E%3Cpath d='M50 4 C45 20 37 28 26 32 C17 36 13 45 16 53 C19 61 28 64 34 61 C27 57 25 50 29 45 C33 40 42 43 46 52 C48 57 49 63 50 70 C51 63 52 57 54 52 C58 43 67 40 71 45 C75 50 73 57 66 61 C72 64 81 61 84 53 C87 45 83 36 74 32 C63 28 55 20 50 4 Z'/%3E%3Crect x='26' y='74' width='48' height='9'/%3E%3C/g%3E%3C/svg%3E");
+}
+/* 外层：蕾丝边（四边短线） */
+html[data-motion="ornate"] .sp-header::before {
+  content: '';
+  position: absolute; inset: 6px;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(90deg, var(--border-color) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(90deg, var(--border-color) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(0deg, var(--border-color) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(0deg, var(--border-color) 0 1px, transparent 1px 5px),
+    var(--sp-deco), var(--sp-deco), var(--sp-deco),
+    var(--sp-deco), var(--sp-deco), var(--sp-deco);
+  background-repeat: no-repeat;
+  background-size: 100% 3px, 100% 3px, 3px 100%, 3px 100%, 14px 14px, 14px 14px, 14px 14px, 14px 14px, 14px 14px, 14px 14px;
+  background-position: 0 0, 0 100%, 0 0, 100% 0, 12px 20%, 12px 50%, 12px 80%, calc(100% - 12px) 20%, calc(100% - 12px) 50%, calc(100% - 12px) 80%;
+  opacity: 0;
+  animation: sp-lace-full 8s linear infinite;
+  transition: opacity 0.9s var(--motion-easing-standard) 0.3s;
+}
+html[data-motion="ornate"] .entered .sp-header::before {
+  opacity: 0.55;
+  animation: sp-lace-full 8s linear infinite, sp-side-flicker 4.5s ease-in-out infinite;
+}
+/* 页头下分割线：恢复 classic 的 ::after 下划线（bottom:0，位置固定不变）；ornate 下略加下内边距 */
+html[data-motion="ornate"] .sp-header { padding-bottom: 16px; }
+
+/* 标题/副标题：居中 + 字距 + 两侧繁多对称点缀（3 圆点 + 双短线 + 双小弧） */
+html[data-motion="ornate"] .sp-header h2 { letter-spacing: 2px; text-align: center; }
+html[data-motion="ornate"] .sp-header .sp-desc { text-align: center; }
+html[data-motion="ornate"] .sp-header h2::before,
+html[data-motion="ornate"] .sp-header h2::after {
+  content: '';
+  display: inline-block;
+  width: 92px; height: 14px;
+  vertical-align: middle;
+  margin: 0 14px;
+  opacity: 0;
+  transform: scaleX(0);
+  transform-origin: center;
+  background:
+    radial-gradient(circle, var(--border-color) 2px, transparent 2.5px) left center / 6px 6px no-repeat,
+    radial-gradient(circle, var(--border-color) 2px, transparent 2.5px) center center / 6px 6px no-repeat,
+    radial-gradient(circle, var(--border-color) 2px, transparent 2.5px) right center / 6px 6px no-repeat,
+    linear-gradient(90deg, var(--border-color), var(--border-color)) left 3px / 28px 1px no-repeat,
+    linear-gradient(90deg, var(--border-color), var(--border-color)) right 4px / 28px 1px no-repeat,
+    conic-gradient(from 200deg, var(--border-color) 0 50deg, transparent 50deg 360deg) 30px center / 12px 12px no-repeat,
+    conic-gradient(from 110deg, var(--border-color) 0 50deg, transparent 50deg 360deg) calc(100% - 30px) center / 12px 12px no-repeat;
+  transition: opacity 0.8s var(--motion-easing-standard) 0.4s,
+              transform 0.8s var(--motion-easing-enter) 0.4s;
+}
+html[data-motion="ornate"] .entered .sp-header h2::before,
+html[data-motion="ornate"] .entered .sp-header h2::after {
+  opacity: 0.75;
+  transform: scaleX(1);
+}
+
+/* ═══ 加载动画（华丽 / 夸张 / 优雅，仅 ornate）═══ */
+html[data-motion="ornate"] .report-card {
+  transform: scale(0.6);
+  transition: opacity 0.5s var(--motion-easing-standard),
+              transform 1.15s cubic-bezier(0.34, 1.8, 0.64, 1);
+}
+html[data-motion="ornate"] .entered .report-card { transform: scale(1); }
+/* 蕾丝边：沿四边生长 + 淡入 */
+html[data-motion="ornate"] .report-card::before {
+  opacity: 0;
+  background-size: 0 3px, 0 3px, 3px 0, 3px 0;
+  transition: opacity 0.9s var(--motion-easing-standard) 0.3s,
+              background-size 1.15s var(--motion-easing-enter);
+}
+html[data-motion="ornate"] .entered .report-card::before {
+  opacity: 0.5;
+  background-size: 100% 3px, 100% 3px, 3px 100%, 3px 100%;
+}
+/* 蝙蝠：点亮（缩放 + 淡入，与蕾丝同步）+ 闪烁 */
+html[data-motion="ornate"] .report-card::after,
+html[data-motion="ornate"] .sp-panel-card::after {
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 0.8s var(--motion-easing-standard) 0.4s,
+              transform 0.8s cubic-bezier(0.34, 1.4, 0.64, 1) 0.4s;
+}
+html[data-motion="ornate"] .entered .report-card::after,
+html[data-motion="ornate"] .entered .sp-panel-card::after {
+  opacity: 0.65;
+  transform: scale(1);
+  animation: mt-flicker 1.1s var(--motion-easing-standard) 0.4s both, sp-bat 5s ease-in-out 1.5s infinite;
+}
 </style>
+

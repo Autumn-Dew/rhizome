@@ -318,4 +318,203 @@ onMounted(() => {
               transform var(--motion-duration-fast) var(--motion-easing-standard);
 }
 .entered .song-item { opacity: 1; transform: translateX(0); }
+
+/* ornate：列表项从中间向两侧浮现（替代 classic 的左侧滑入） */
+html[data-motion="ornate"] .song-item {
+  opacity: 0; transform: scaleX(0);
+  transform-origin: center;
+  transition: opacity var(--motion-duration-fast) var(--motion-easing-standard),
+              transform var(--motion-duration-slow) var(--motion-easing-enter);
+}
+html[data-motion="ornate"] .entered .song-item { opacity: 1; transform: scaleX(1); }
+
+/* ══════════════════════════════════════════════════════════════
+   Ornate（华丽方案）页面装饰 —— 沿用设置页风格：
+   页面头蕾丝 + 标题居中；统计卡蕾丝边 + 四角蝙蝠；
+   列表项轻蕾丝；按钮反色 + 四边 currentColor 延展。
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── 鸢尾花纹（明暗两套，祖先 .theme-dark 切换） ── */
+html[data-motion="ornate"] .play-stats {
+  --ps-deco: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='%23000'%3E%3Cpath d='M50 4 C45 20 37 28 26 32 C17 36 13 45 16 53 C19 61 28 64 34 61 C27 57 25 50 29 45 C33 40 42 43 46 52 C48 57 49 63 50 70 C51 63 52 57 54 52 C58 43 67 40 71 45 C75 50 73 57 66 61 C72 64 81 61 84 53 C87 45 83 36 74 32 C63 28 55 20 50 4 Z'/%3E%3Crect x='26' y='74' width='48' height='9'/%3E%3C/g%3E%3C/svg%3E");
+}
+html[data-motion="ornate"] .theme-dark .play-stats {
+  --ps-deco: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='%23fff'%3E%3Cpath d='M50 4 C45 20 37 28 26 32 C17 36 13 45 16 53 C19 61 28 64 34 61 C27 57 25 50 29 45 C33 40 42 43 46 52 C48 57 49 63 50 70 C51 63 52 57 54 52 C58 43 67 40 71 45 C75 50 73 57 66 61 C72 64 81 61 84 53 C87 45 83 36 74 32 C63 28 55 20 50 4 Z'/%3E%3Crect x='26' y='74' width='48' height='9'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* ── 页面头：外蕾丝（内嵌两侧鸢尾），标题/副标题居中 ── */
+html[data-motion="ornate"] .stats-header { position: relative; }
+html[data-motion="ornate"] .stats-header::before {
+  content: '';
+  position: absolute; inset: 6px;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(90deg, var(--border-color) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(90deg, var(--border-color) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(0deg, var(--border-color) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(0deg, var(--border-color) 0 1px, transparent 1px 5px),
+    var(--ps-deco), var(--ps-deco), var(--ps-deco),
+    var(--ps-deco), var(--ps-deco), var(--ps-deco);
+  background-repeat: no-repeat;
+  background-size: 100% 3px, 100% 3px, 3px 100%, 3px 100%, 14px 14px, 14px 14px, 14px 14px, 14px 14px, 14px 14px, 14px 14px;
+  background-position: 0 0, 0 100%, 0 0, 100% 0, 12px 20%, 12px 50%, 12px 80%, calc(100% - 12px) 20%, calc(100% - 12px) 50%, calc(100% - 12px) 80%;
+  opacity: 0;
+  animation: ps-lace 8s linear infinite;
+  transition: opacity 0.9s var(--motion-easing-standard) 0.3s;
+}
+html[data-motion="ornate"] .entered .stats-header::before { opacity: 0.5; }
+html[data-motion="ornate"] .stats-header h2 { text-align: center; letter-spacing: 2px; }
+html[data-motion="ornate"] .stats-header .desc { text-align: center; }
+@keyframes ps-lace {
+  0%   { background-position: 0 0, 0 100%, 0 0, 100% 0, 12px 20%, 12px 50%, 12px 80%, calc(100% - 12px) 20%, calc(100% - 12px) 50%, calc(100% - 12px) 80%; }
+  100% { background-position: 7px 0, -7px 100%, 0 -7px, 100% 7px, 12px 20%, 12px 50%, 12px 80%, calc(100% - 12px) 20%, calc(100% - 12px) 50%, calc(100% - 12px) 80%; }
+}
+
+/* ── 统计卡：蕾丝边 + 四角蝙蝠（闪烁 + 偶发变红） ── */
+html[data-motion="ornate"] .stat-card { position: relative; }
+html[data-motion="ornate"] .stat-card::before {
+  content: '';
+  position: absolute; inset: 3px;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(90deg, var(--border-color) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(90deg, var(--border-color) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(0deg, var(--border-color) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(0deg, var(--border-color) 0 1px, transparent 1px 7px);
+  background-repeat: no-repeat;
+  background-size: 100% 3px, 100% 3px, 3px 100%, 3px 100%;
+  background-position: 0 0, 0 100%, 0 0, 100% 0;
+  opacity: 0;
+  animation: ps-lace 8s linear infinite;
+  transition: opacity 0.9s var(--motion-easing-standard) 0.3s;
+}
+html[data-motion="ornate"] .entered .stat-card::before { opacity: 0.4; }
+html[data-motion="ornate"] .stat-card::after {
+  content: '';
+  position: absolute; inset: 0;
+  pointer-events: none;
+  background: var(--border-color);
+  -webkit-mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(315 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left top / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(45 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right top / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(225 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left bottom / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(135 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right bottom / 16px 16px no-repeat;
+  mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(315 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left top / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(45 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right top / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(225 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") left bottom / 16px 16px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath transform='rotate(135 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E") right bottom / 16px 16px no-repeat;
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 0.8s var(--motion-easing-standard) 0.4s,
+              transform 0.8s cubic-bezier(0.34, 1.4, 0.64, 1) 0.4s;
+}
+html[data-motion="ornate"] .entered .stat-card::after {
+  opacity: 0.65;
+  transform: scale(1);
+  animation: ps-bat 5s ease-in-out infinite;
+}
+@keyframes ps-bat {
+  0%, 100% { opacity: 0.7;  background-color: var(--border-color); }
+  20%      { opacity: 0.18; background-color: var(--border-color); }
+  40%      { opacity: 0.85; background-color: #c0392b; }
+  62%      { opacity: 0.25; background-color: var(--border-color); }
+  82%      { opacity: 0.9;  background-color: #c0392b; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   歌曲列表 hover 动效（单层）：红色覆盖 + 两只竖向白蝙蝠（左右各一，
+   位于列表项左右外侧）；以中心为起点，自中间向两侧展开（速度参考设置页）。
+   ══════════════════════════════════════════════════════════════ */
+
+/* 本风格只用单层红覆盖：彻底移除 classic 的黑白反色滑动底 */
+html[data-motion="ornate"] .song-item::before,
+html[data-motion="ornate"] .song-item:hover::before { display: none; }
+
+/* 单层覆盖：红色 + 两只白蝙蝠，外扩到列表项左右外侧（不挡内容） */
+html[data-motion="ornate"] .song-item::after {
+  content: '';
+  position: absolute; inset: 0 -18px; z-index: -1;
+  pointer-events: none;
+  background-color: #c0392b;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23fff' transform='rotate(90 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23fff' transform='rotate(-90 12 12)' d='M12 3C11 5 9 6 7 6 5 6 3 5 2 4 3 7 4 10 7 11 5 12 3 12 1 11 3 14 6 16 10 16L11 10 12 10 13 10 14 16C18 16 21 14 23 11 21 12 19 12 17 11 20 10 21 7 22 4 21 5 19 6 17 6 15 6 13 5 12 3Z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat, no-repeat;
+  background-position: left center, right center;
+  background-size: auto 100%, auto 100%;
+  clip-path: inset(0 50% 0 50%);
+  opacity: 0;
+  transition: opacity 0s, clip-path var(--motion-duration-glacial) var(--motion-easing-enter);
+}
+html[data-motion="ornate"] .song-item:hover::after {
+  opacity: 1;
+  clip-path: inset(0 0 0 0);
+}
+
+
+/* ── 按钮：hover 反色 + 四边 currentColor 延展（对齐设置页） ── */
+html[data-motion="ornate"] .rc-global-btn,
+html[data-motion="ornate"] .song-btn,
+html[data-motion="ornate"] .float-btn { position: relative; }
+html[data-motion="ornate"] .rc-global-btn::before,
+html[data-motion="ornate"] .song-btn::before,
+html[data-motion="ornate"] .float-btn::before {
+  content: '';
+  position: absolute; inset: 1px;
+  pointer-events: none;
+  background:
+    linear-gradient(currentColor, currentColor) left top no-repeat,
+    linear-gradient(currentColor, currentColor) right top no-repeat,
+    linear-gradient(currentColor, currentColor) left bottom no-repeat,
+    linear-gradient(currentColor, currentColor) right bottom no-repeat,
+    linear-gradient(currentColor, currentColor) left top no-repeat,
+    linear-gradient(currentColor, currentColor) left bottom no-repeat,
+    linear-gradient(currentColor, currentColor) right top no-repeat,
+    linear-gradient(currentColor, currentColor) right bottom no-repeat;
+  background-size: 0 2px, 0 2px, 0 2px, 0 2px, 2px 0, 2px 0, 2px 0, 2px 0;
+  transition: background-size var(--motion-time-interaction) var(--motion-easing-standard);
+}
+html[data-motion="ornate"] .rc-global-btn:hover::before,
+html[data-motion="ornate"] .song-btn:hover::before,
+html[data-motion="ornate"] .float-btn:hover::before {
+  background-size: 45% 2px, 45% 2px, 45% 2px, 45% 2px, 2px 45%, 2px 45%, 2px 45%, 2px 45%;
+}
+
+/* ── 入场：卡片绽放（overshoot） → 蕾丝生长 → 蝙蝠点亮 ── */
+html[data-motion="ornate"] .stat-card {
+  transform: scale(0.6);
+  transition: opacity 0.5s var(--motion-easing-standard),
+              transform 1.15s cubic-bezier(0.34, 1.8, 0.64, 1);
+}
+html[data-motion="ornate"] .entered .stat-card { transform: scale(1); }
+
+/* 标题两侧对称点缀（与设置页一致：3 圆点 + 双短线 + 双小弧） */
+html[data-motion="ornate"] .stats-header h2::before,
+html[data-motion="ornate"] .stats-header h2::after {
+  content: '';
+  display: inline-block;
+  width: 92px; height: 14px;
+  vertical-align: middle;
+  margin: 0 14px;
+  opacity: 0;
+  transform: scaleX(0);
+  transform-origin: center;
+  background:
+    radial-gradient(circle, var(--border-color) 2px, transparent 2.5px) left center / 6px 6px no-repeat,
+    radial-gradient(circle, var(--border-color) 2px, transparent 2.5px) center center / 6px 6px no-repeat,
+    radial-gradient(circle, var(--border-color) 2px, transparent 2.5px) right center / 6px 6px no-repeat,
+    linear-gradient(90deg, var(--border-color), var(--border-color)) left 3px / 28px 1px no-repeat,
+    linear-gradient(90deg, var(--border-color), var(--border-color)) right 4px / 28px 1px no-repeat,
+    conic-gradient(from 200deg, var(--border-color) 0 50deg, transparent 50deg 360deg) 30px center / 12px 12px no-repeat,
+    conic-gradient(from 110deg, var(--border-color) 0 50deg, transparent 50deg 360deg) calc(100% - 30px) center / 12px 12px no-repeat;
+  transition: opacity 0.8s var(--motion-easing-standard) 0.4s,
+              transform 0.8s var(--motion-easing-enter) 0.4s;
+}
+html[data-motion="ornate"] .entered .stats-header h2::before,
+html[data-motion="ornate"] .entered .stats-header h2::after {
+  opacity: 0.75;
+  transform: scaleX(1);
+}
 </style>
+

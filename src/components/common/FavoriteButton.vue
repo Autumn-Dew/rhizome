@@ -45,22 +45,43 @@ const toggle = () => {
   cursor: pointer;
   transition: var(--motion-control-hover);
   flex-shrink: 0;
+  position: relative;
 }
 .fav-btn svg {
   width: 14px;
   height: 14px;
 }
-.fav-btn:hover {
+/* hover 与其它小按钮一致：反色 + 边框也随反色（与 .song-btn:hover 对齐） */
+.fav-btn:hover,
+.fav-btn.active:hover {
   background: var(--btn-hover-bg);
   color: var(--btn-hover-text);
   border-color: var(--btn-hover-text);
 }
+/* 已喜欢：仅用红色标记状态（hover 时上面规则统一覆盖） */
 .fav-btn.active {
   color: #e74c3c;
   border-color: #e74c3c;
 }
-.fav-btn.active:hover {
-  background: #e74c3c;
-  color: #fff;
+
+/* ══ Ornate：喜欢按钮四边 currentColor 延展（与其它按钮统一） ══ */
+html[data-motion="ornate"] .fav-btn::before {
+  content: '';
+  position: absolute; inset: 1px;
+  pointer-events: none;
+  background:
+    linear-gradient(currentColor, currentColor) left top no-repeat,
+    linear-gradient(currentColor, currentColor) right top no-repeat,
+    linear-gradient(currentColor, currentColor) left bottom no-repeat,
+    linear-gradient(currentColor, currentColor) right bottom no-repeat,
+    linear-gradient(currentColor, currentColor) left top no-repeat,
+    linear-gradient(currentColor, currentColor) left bottom no-repeat,
+    linear-gradient(currentColor, currentColor) right top no-repeat,
+    linear-gradient(currentColor, currentColor) right bottom no-repeat;
+  background-size: 0 2px, 0 2px, 0 2px, 0 2px, 2px 0, 2px 0, 2px 0, 2px 0;
+  transition: background-size var(--motion-time-interaction) var(--motion-easing-standard);
+}
+html[data-motion="ornate"] .fav-btn:hover::before {
+  background-size: 45% 2px, 45% 2px, 45% 2px, 45% 2px, 2px 45%, 2px 45%, 2px 45%, 2px 45%;
 }
 </style>

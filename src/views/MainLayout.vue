@@ -85,7 +85,7 @@ import SelectModal from '@/components/common/SelectModal.vue'
 import DemoOverlay from '@/components/demo/DemoOverlay.vue'
 import SplashOverlay from '@/components/splash/SplashOverlay.vue'
 import { useIdle } from '@/composables/useIdle'
-import { idleTimeoutSec } from '@/composables/useIdleTimeout'
+import { idleTimeoutSec, screensaverEnabled, screensaverSuppressed } from '@/composables/useIdleTimeout'
 import { playShortcutSound } from '@/composables/useSound'
 import { useAudioDevice } from '@/composables/useAudioDevice'
 
@@ -116,7 +116,7 @@ const showScreensaver = ref(false)
 const idleTimeoutMs = computed(() => idleTimeoutSec.value * 1000)
 const { resetTimer: resetIdle } = useIdle({
   timeout: idleTimeoutMs,
-  onIdle: () => { showScreensaver.value = true },
+  onIdle: () => { if (screensaverEnabled.value && !screensaverSuppressed.value) showScreensaver.value = true },
   onActive: () => {}
 })
 function dismissScreensaver() {
@@ -656,5 +656,27 @@ const goToSongDetail = () => {
 @keyframes hint-pop {
   from { opacity: 0; transform: translateX(-50%) translateY(6px) scale(0.95); }
   to   { opacity: 0.6; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+/* ── Ornate：标题栏窗口按钮——四边 currentColor 延展（hover 反色沿用 classic） ── */
+html[data-motion="ornate"] .rc-window-btn { position: relative; }
+html[data-motion="ornate"] .rc-window-btn::before {
+  content: '';
+  position: absolute; inset: 1px;
+  pointer-events: none;
+  background:
+    linear-gradient(currentColor, currentColor) left top no-repeat,
+    linear-gradient(currentColor, currentColor) right top no-repeat,
+    linear-gradient(currentColor, currentColor) left bottom no-repeat,
+    linear-gradient(currentColor, currentColor) right bottom no-repeat,
+    linear-gradient(currentColor, currentColor) left top no-repeat,
+    linear-gradient(currentColor, currentColor) left bottom no-repeat,
+    linear-gradient(currentColor, currentColor) right top no-repeat,
+    linear-gradient(currentColor, currentColor) right bottom no-repeat;
+  background-size: 0 2px, 0 2px, 0 2px, 0 2px, 2px 0, 2px 0, 2px 0, 2px 0;
+  transition: background-size var(--motion-time-interaction) var(--motion-easing-standard);
+}
+html[data-motion="ornate"] .rc-window-btn:hover::before {
+  background-size: 45% 2px, 45% 2px, 45% 2px, 45% 2px, 2px 45%, 2px 45%, 2px 45%, 2px 45%;
 }
 </style>
