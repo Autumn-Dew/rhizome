@@ -37,6 +37,7 @@ export const K_SORT_PREF         = 'rhizome-sort-pref'
 export const K_SORT_ORDERS       = 'rhizome-sort-orders'
 export const K_REPORT_AUTO       = 'rhizome-report-auto'
 export const K_SCREENSAVER_ENABLED = 'rhizome-screensaver-enabled'
+export const K_LOG_ENABLED        = 'rhizome-log-enabled'
 
 // ── 旧版 / 非 rhizome 前缀（兼容） ──
 export const K_LOCAL_PLAYLISTS    = 'local_playlists'
@@ -76,6 +77,7 @@ export const ALL_STORAGE_KEYS = [
   K_SORT_ORDERS,
   K_REPORT_AUTO,
   K_SCREENSAVER_ENABLED,
+  K_LOG_ENABLED,
   // 大型数据
   K_LOCAL_PLAYLISTS,
   K_PLAYLIST_SONGS,

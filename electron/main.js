@@ -3,6 +3,7 @@ const path = require('path')
 const os = require('os')
 const fs = require('fs/promises')
 const mm = require('music-metadata')
+const { createLogger } = require('./lib/logger.cjs')
 
 const DATA_DIR = path.join(app.getPath('userData'), 'data')
 
@@ -41,6 +42,8 @@ function createWindow() {
             contextIsolation: true,
             nodeIntegration: false,
             sandbox: false,
+            // 开发者内容一律移除（dev 与打包版相同，不做环境判断）
+            devTools: false,
             preload: path.join(__dirname, 'preload.js'),
             webSecurity: false,
             // 光标音效由 mouseover 触发（非用户手势），需允许无手势播放音频
@@ -50,6 +53,7 @@ function createWindow() {
 
     win.once('ready-to-show', () => {
         win.show()
+        logger?.info('[timing] window ready-to-show')
     })
 
     if (app.isPackaged) {
@@ -58,8 +62,13 @@ function createWindow() {
         win.loadURL('http://localhost:9000')
     }
 
-    // win.webContents.openDevTools()
     win.removeMenu()
+    setupRendererLogging(win)
+    // 开发者内容一律移除（dev 与打包版相同，不做环境判断）：
+    // 不自动打开 DevTools、不响应 F12 / Ctrl+Shift+I、禁用右键菜单（含「检查元素」），
+    // 并对任何残余入口做兜底关闭。
+    win.webContents.on('devtools-opened', () => win.webContents.closeDevTools())
+    win.webContents.on('context-menu', (e) => e.preventDefault())
 
     win.on('close', (e) => {
         if (!app.isQuitting) {
@@ -670,7 +679,49 @@ ipcMain.handle('update-global-shortcuts', async (e, list) => {
     return true
 })
 
+let logger = null
+
+// 把 renderer 的 console / 崩溃事件落盘（打包环境无 DevTools 时定位问题）
+function setupRendererLogging(w) {
+    const wc = w.webContents
+    wc.on('console-message', (_e, ...rest) => {
+        if (!logger) return
+        // Electron 41 新签名 (event, details)；旧签名为 (event, level, message, line, sourceId)，两者都兼容
+        let level, message, line, source
+        if (rest.length >= 3 && typeof rest[1] === 'string') {
+            [level, message, line, source] = rest
+        } else {
+            const d = rest[0] || {}
+            level = d.level; message = d.message; line = d.lineNumber; source = d.sourceId
+        }
+        logger.write(`RENDERER/${level ?? 'log'}`, [`${message} (${source || '?'}:${line ?? '?'})`])
+    })
+    wc.on('render-process-gone', (_e, details) => logger?.error('[crash] render-process-gone', details))
+    wc.on('preload-error', (_e, preloadPath, error) => logger?.error('[crash] preload-error', preloadPath, error))
+    wc.on('unresponsive', () => logger?.warn('[perf] renderer unresponsive'))
+    wc.on('responsive', () => logger?.info('[perf] renderer responsive'))
+    wc.on('did-finish-load', () => logger?.info('[timing] did-finish-load'))
+    wc.on('did-fail-load', (_e, code, desc, url) => logger?.error('[crash] did-fail-load', code, desc, url))
+}
+
+// 「调试日志」开关（设置页 → 系统选项，默认关闭）：
+// 关闭时 main 侧日志不落盘；开启后由渲染进程在启动与切换时同步过来
+ipcMain.on('set-log-enabled', (_e, enabled) => {
+    logger?.setEnabled(!!enabled)
+})
+
 app.whenReady().then(() => {
+    // 文件日志（打包环境无 DevTools，供用户回传定位渲染/性能问题）
+    // 默认关闭：渲染进程启动后按 localStorage 的「调试日志」开关同步（见 set-log-enabled）
+    logger = createLogger(path.join(app.getPath('userData'), 'logs'))
+    logger.hookConsole()
+    logger.info('=== app ready ===', {
+        version: app.getVersion(),
+        packaged: app.isPackaged,
+        electron: process.versions.electron,
+        userData: app.getPath('userData'),
+        logFile: logger.filePath,
+    })
     // 设置 AppUserModelID，使 Windows 媒体控件（SMTC）显示应用名「Rhizome」而非「未知应用」
     app.setAppUserModelId('com.rhizome.music.player')
     createWindow()
@@ -720,6 +771,8 @@ app.on('window-all-closed', () => {
 
 app.on('will-quit', () => {
     globalShortcut.unregisterAll()
+    logger?.info('=== will-quit ===')
+    logger?.close()
 })
 
 app.on('activate', () => {

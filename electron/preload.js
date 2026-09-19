@@ -270,6 +270,9 @@ contextBridge.exposeInMainWorld("electron", {
   clearAllData: () => ipcRenderer.invoke("clear-all-data"),
   appQuit: () => ipcRenderer.send("app-quit"),
 
+  // 调试日志开关（默认关闭，设置页 → 系统选项）
+  setLogEnabled: (enabled) => ipcRenderer.send("set-log-enabled", !!enabled),
+
   // 退出前报告生成握手
   onPrepareQuit: (cb) => ipcRenderer.on("prepare-quit", cb),
   sendQuitReady: () => ipcRenderer.send("quit-ready"),

@@ -34,6 +34,7 @@ const EXPECTED = {
     K_SORT_ORDERS: 'rhizome-sort-orders',
     K_REPORT_AUTO: 'rhizome-report-auto',
     K_SCREENSAVER_ENABLED: 'rhizome-screensaver-enabled',
+    K_LOG_ENABLED: 'rhizome-log-enabled',
     // ── 旧版 / 非 rhizome 前缀（兼容） ──
     K_LOCAL_PLAYLISTS: 'local_playlists',
     K_PLAYLIST_SONGS: 'local_playlist_songs',

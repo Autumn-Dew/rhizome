@@ -95,6 +95,13 @@
               <button class="tab-toggle" :class="{ active: reportAuto }" @click="setReportAuto(true)">开</button>
             </span>
           </div>
+          <div class="sys-option">
+            <span class="sys-option-label">调试日志</span>
+            <span class="sys-option-toggle">
+              <button class="tab-toggle" :class="{ active: !logEnabled }" @click="setLogEnabled(false)">关</button>
+              <button class="tab-toggle" :class="{ active: logEnabled }" @click="setLogEnabled(true)">开</button>
+            </span>
+          </div>
         </div>
       </div>
 
@@ -302,6 +309,7 @@ import AboutModal from '@/components/common/AboutModal.vue'
 import { K_LYRIC_SIZE, K_LYRIC_ALIGN, K_REPORT_PATH, K_DESKTOP_LYRICS_BG, K_REPORT_AUTO } from '@/constants/storage-keys'
 import { idleTimeoutSec, setIdleTimeout, screensaverEnabled, setScreensaverEnabled } from '@/composables/useIdleTimeout'
 import { playShortcutSound, isSoundEnabled, setSoundEnabled, getSoundVolume, setSoundVolume } from '@/composables/useSound'
+import { useLogging } from '@/composables/useLogging'
 
 const { themeClass, themes, themeId, setTheme } = useGlobalTheme()
 const { schemes: motionSchemes, motionId, setMotion } = useMotionScheme()
@@ -316,6 +324,8 @@ const { requiredCount, setRequiredCount, DELETE_CONFIRM_OPTIONS, confirmHardDele
 const { offsetMs: lyricOffset } = useLyricOffset();
 const showAbout = ref(false)
 const activeSection = ref('system')
+// 调试日志开关（默认关闭）：控制 main 侧日志落盘与 renderer 性能采样
+const { logEnabled, setLogEnabled } = useLogging()
 
 const shortcutDefs = getActionDefs()
 const shortcutConfig = ref(getShortcutConfig())
