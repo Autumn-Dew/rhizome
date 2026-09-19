@@ -1,9 +1,14 @@
-import { ref, onMounted, onActivated, nextTick } from 'vue'
+import { ref, onMounted, onActivated, nextTick, getCurrentInstance } from 'vue'
 
 // 回退值：与 motion-tokens.css 中 --motion-stagger-base / --motion-stagger-interval 的 :root 默认值一致，
 // 在 CSS 变量不可读（如测试环境）时使用，保证与经典方案行为一致。
 const STAGGER_INTERVAL = 0.023
 const STAGGER_BASE = 0.24
+
+// 错峰序号上限：长列表（实测 1319 首）若按 index 线性叠加，末条延迟会涨到 30 秒以上，
+// 形成一条持续数十秒的动画时间线，每帧都要做大量 transition/样式计算 → 严重卡顿。
+// 对序号封顶后，整条入场时间线被限制在约 1s 内。
+export const STAGGER_MAX_INDEX = 30
 
 // 读取指定 CSS 时间变量（秒）；不可读时回退。
 function readCssTime(name, fallback) {
@@ -35,6 +40,10 @@ export function usePageEnter() {
   function triggerEnter() {
     if (triggered) { entered.value = true; return }
     triggered = true
+    const inst = getCurrentInstance()
+    const t = inst?.type || {}
+    const name = t.__name || t.name || t.__file || 'unknown'
+    console.log(`[timing][enter] trigger ${name} @${Math.round(performance.now())}ms items=${document.querySelectorAll('.song-item,.playlist-item,.view-card').length} all=${document.querySelectorAll('*').length}`)
     requestAnimationFrame(() => { entered.value = true })
   }
 
@@ -56,7 +65,9 @@ export function usePageEnter() {
   function staggerStyle(index, baseDelay) {
     const { base, interval } = readStagger()
     const start = baseDelay ?? base
-    return { transitionDelay: `${start + index * interval}s` }
+    // 序号封顶：避免长列表延迟线性爆炸（见 STAGGER_MAX_INDEX 注释）
+    const i = Math.min(Math.max(index || 0, 0), STAGGER_MAX_INDEX)
+    return { transitionDelay: `${start + i * interval}s` }
   }
 
   return { entered, triggerEnter, staggerStyle, resetEnter }

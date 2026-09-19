@@ -407,6 +407,11 @@ const {
   persistSortOrders()
 })
 const { entered, staggerStyle, triggerEnter, resetEnter } = usePageEnter();
+// 文件夹切换（含切回「全部」）时重播歌曲列表的入场动画。
+// ⚠️ 必须放在 activeFolder / resetEnter / triggerEnter 定义之后：
+// watch() 的第一个参数会立即求值，提前引用会命中 TDZ 抛 ReferenceError，
+// 而组件 setup 抛错会导致整个主界面无法渲染（全黑）。
+watch(activeFolder, () => { resetEnter(); nextTick(() => { triggerEnter() }) })
 const folderStripRef = ref(null);
 
 // 文件夹 Strip 鼠标滚轮横向滚动（绑定在 template 上，随 v-if 渲染自动生效）
@@ -711,8 +716,11 @@ onMounted(async () => {
     await musicStore.initFromStorage()
   }
   // 等 splash 淡出后再播入场动效
-  if (document.querySelector('.splash-screen')) {
-    window.addEventListener('appReady', triggerEnter, { once: true })
+  // 注意：splash 元素是 id="rhizome-splash"，隐藏时加 class "hidden"，
+  // 结束事件是 window 上的 'splash-done'（见 App.vue / MainLayout.vue，保持一致）
+  const splash = document.getElementById('rhizome-splash')
+  if (splash && !splash.classList.contains('hidden')) {
+    window.addEventListener('splash-done', triggerEnter, { once: true })
   } else {
     triggerEnter()
   }
@@ -925,10 +933,7 @@ onMounted(async () => {
   gap: 0;
   position: relative;
   z-index: 0;
-  /* 屏外行跳过布局/绘制（等效轻量虚拟滚动），减少长列表开销 */
-  content-visibility: auto;
-  contain-intrinsic-size: auto 52px;
-}
+  }
 
 .song-item::before {
   content: '';
@@ -1351,10 +1356,7 @@ html[data-motion="ornate"] .entered .song-item { opacity: 1; transform: scaleX(1
   opacity: 0; transform: translateX(-20px);
   transition: opacity var(--motion-duration-fast) var(--motion-easing-standard),
               transform var(--motion-duration-fast) var(--motion-easing-standard);
-  /* 屏外卡片跳过布局/绘制 */
-  content-visibility: auto;
-  contain-intrinsic-size: auto 160px;
-}
+  }
 .entered .view-card { opacity: 1; transform: translateX(0); }
 .view-card:hover { background: var(--btn-hover-bg); color: var(--btn-hover-text); transition: background var(--motion-duration-fast), color var(--motion-duration-fast) !important; }
 .view-card-cover {
@@ -1547,7 +1549,6 @@ html[data-motion="ornate"] .view-card::before {
   background-size: 100% 3px, 100% 3px, 3px 100%, 3px 100%;
   background-position: 0 0, 0 100%, 0 0, 100% 0;
   opacity: 0;
-  animation: lm-lace 8s linear infinite;
   transition: opacity 0.9s var(--motion-easing-standard) 0.3s;
 }
 html[data-motion="ornate"] .entered .view-card::before { opacity: 0.4; }

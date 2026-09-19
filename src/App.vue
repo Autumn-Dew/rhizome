@@ -13,6 +13,7 @@ import { checkAndGenerateAuto } from '@/composables/useWeeklyPlaylists'
 import { initGlobalUiSound, playCursorSound, preloadSfx, CLICKABLE_SELECTOR } from '@/composables/useSound'
 import { REPORT_TYPES, reportFilename, isReportGenerated, markReportGenerated, previousPeriodDate } from '@/utils/report'
 import { K_REPORT_AUTO } from '@/constants/storage-keys'
+import { usePerfLogger } from '@/composables/usePerfLogger'
 
 // 报告自动生成开关（默认开启）
 function isReportAuto() {
@@ -21,6 +22,9 @@ function isReportAuto() {
 
 
 const appReady = ref(false)
+
+// 诊断用性能采样：longtask + FPS，输出经 renderer console → main 落盘
+usePerfLogger('app')
 const playerStore = usePlayerStore()
 let localStoreRef = null
 
@@ -94,11 +98,55 @@ function initCursorSound() {
   })
 }
 
-onMounted(async () => {
+// 启动动画退场：必须在 onMounted 里「任何 await 之前」同步调用。
+// #app-main 初始 opacity:0，只有 appReady=true 才可见；若退场逻辑被 await 阻塞
+// （例如 dev 下曲库为空时 waitSongListReady 会轮询最多 15s），splash 动画播完后
+// 就是一个长时间的全黑窗口。
+function startSplashExit() {
+  const splash = document.getElementById('rhizome-splash')
+  if (!splash) {
+    // 无 splash（二次进入等场景），直接显示
+    appReady.value = true
+    window.dispatchEvent(new CustomEvent('splash-done'))
+    return
+  }
+  const elapsed = performance.now()
+  // 正向动画 ~2.5s，停留 1s 后倒放
+  const minShow = 3500
+  const delay = Math.max(0, minShow - elapsed)
+  setTimeout(() => {
+    // 开始倒放
+    splash.classList.add('reversing')
+    // 倒放 ~0.7s 后隐藏并显示主界面
+    setTimeout(() => {
+      splash.classList.add('hidden')
+      setTimeout(() => {
+        appReady.value = true
+        window.dispatchEvent(new CustomEvent('splash-done'))
+      }, 300)
+    }, 750)
+  }, delay)
+}
+
+onMounted(() => {
+  const T0 = performance.now()
+  const el = () => Math.round(performance.now() - T0)
   const localStore = useLocalMusicStore()
   localStoreRef = localStore
+
+  // ⚠️ 先启动 splash 退场，再跑（可能很慢的）数据初始化
+  startSplashExit()
+
+  console.log('[timing] mount start @0ms')
+  initApp(localStore, el)
+})
+
+// 数据初始化（异步；不得阻塞 splash 退场）
+async function initApp(localStore, el) {
   await localStore.migrateIfNeeded()
+  console.log(`[timing] migrateIfNeeded done @${el()}ms`)
   await localStore.initFromStorage()
+  console.log(`[timing] initFromStorage done @${el()}ms loaded=${localStore.loaded} songs=${localStore.songList.length}`)
   localStore.mergeSongCache()
 
   // 全局 UI 音效：点击任意可交互元素播放通用音效
@@ -109,7 +157,22 @@ onMounted(async () => {
   initCursorSound()
 
   // 自动歌单（周/月/年，三种独立）
-  checkAndGenerateAuto(localStore.songList)
+  // 等待歌曲列表真正加载完成后再生成：migrateIfNeeded / initFromStorage 都是异步，
+  // 且 router-view 内的 LocalMusic 也可能抢先调用 initFromStorage（其 loading=true 时
+  // 本处的 await initFromStorage 会立即返回，songList 仍为空 → 会跳过生成）。故此处轮询直到就绪。
+  const waitSongListReady = async (timeoutMs = 15000) => {
+    const t0 = Date.now()
+    while (Date.now() - t0 < timeoutMs) {
+      if (localStore.loaded && localStore.songList.length) return
+      await new Promise(r => setTimeout(r, 200))
+    }
+  }
+  // 刻意 .then() 而不 await：此处最多轮询 15s，会拖慢后面所有初始化
+  waitSongListReady().then(() => {
+    console.log(`[timing] songList ready @${el()}ms loaded=${localStore.loaded} songs=${localStore.songList.length}`)
+    checkAndGenerateAuto(localStore.songList)
+    console.log(`[timing] checkAndGenerateAuto done @${el()}ms`)
+  })
 
   // 每 30 分钟检测是否需要更新智能歌单
   setInterval(() => {
@@ -132,31 +195,8 @@ onMounted(async () => {
     window.electron?.sendQuitReady?.()
   })
 
-  // 隐藏启动动画（确保至少显示 800ms）
-  const splash = document.getElementById('rhizome-splash')
-  if (splash) {
-    const elapsed = performance.now()
-    // 正向动画 ~2.5s，停留 1s 后倒放
-    const minShow = 3500
-    const delay = Math.max(0, minShow - elapsed)
-    setTimeout(() => {
-      // 开始倒放
-      splash.classList.add('reversing')
-      // 倒放 ~0.7s 后隐藏并显示主界面
-      setTimeout(() => {
-        splash.classList.add('hidden')
-        setTimeout(() => {
-          appReady.value = true
-          window.dispatchEvent(new CustomEvent('splash-done'))
-        }, 300)
-      }, 750)
-    }, delay)
-  } else {
-    // 无 splash（二次进入等场景），直接显示
-    appReady.value = true
-    window.dispatchEvent(new CustomEvent('splash-done'))
-  }
-})
+  // 隐藏启动动画（见 startSplashExit：已在 onMounted 同步段启动，此处不再处理）
+}
 </script>
 
 <style>

@@ -32,10 +32,13 @@ export default defineConfig({
     optimizeDeps: {
         include: ['vue', 'pinia', 'vue-router', 'dayjs']
     },
-    build: {
+    // 全局 CSS 压缩（缩小产物）—— 诊断期临时关闭：验证 build 与 dev 行为差异是否来自压缩构建
+  cssMinify: false,
+  build: {
         outDir: 'dist',
         assetsDir: 'assets',
-        minify: 'terser',
+        // 诊断期临时关闭 JS 压缩（minify:false）——验证 build/dev 行为差异是否来自压缩构建
+        minify: false,
         rollupOptions: {
             input: {
                 main: path.resolve(__dirname, 'index.html'),
@@ -44,7 +47,9 @@ export default defineConfig({
         },
         terserOptions: {
             compress: {
-                drop_console: true,
+                // 保留 console：打包环境下 renderer 的 console 会经 main 的
+                // console-message 落盘到 userData/logs，用于诊断渲染/性能问题。
+                drop_console: false,
                 drop_debugger: true
             }
         }
