@@ -15,7 +15,12 @@ export const useLocalMusicStore = defineStore('localMusic', {
     actions: {
         // === 启动加载 ===
         async initFromStorage() {
-            if (this.loaded || this.loading) return
+            if (this.loaded || this.loading) {
+                console.log(`[timing][store] initFromStorage skipped (loaded=${this.loaded} loading=${this.loading})`)
+                return
+            }
+            const _t0 = performance.now()
+            console.log('[timing][store] initFromStorage start')
             this.loading = true
             try {
                 const api_ = api()
@@ -85,6 +90,7 @@ export const useLocalMusicStore = defineStore('localMusic', {
                 this.loaded = true
             } finally {
                 this.loading = false
+                console.log(`[timing][store] initFromStorage done ${Math.round(performance.now() - _t0)}ms songs=${this.songList.length} loaded=${this.loaded}`)
             }
         },
 

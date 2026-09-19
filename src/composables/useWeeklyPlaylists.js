@@ -59,9 +59,11 @@ function generateForPeriod(songList, period, force = false) {
   const songsMap = JSON.parse(localStorage.getItem(K_PLAYLIST_SONGS) || '{}')
 
   // 移除该周期的旧一期（仅本周期前缀），其它周期/普通歌单不受影响
-  const others = playlists.filter(p =>
-    !p.localId?.startsWith(meta.topPrefix) && !p.localId?.startsWith(meta.discPrefix)
-  )
+  // 注意：手建歌单的 localId 是数字（MyPlaylist 用 Date.now()），必须先转成字符串再判断
+  const others = playlists.filter(p => {
+    const id = String(p?.localId ?? '')
+    return !id.startsWith(meta.topPrefix) && !id.startsWith(meta.discPrefix)
+  })
 
   const now = Date.now()
   if (top.length) {
@@ -82,18 +84,27 @@ function generateForPeriod(songList, period, force = false) {
 
   localStorage.setItem(K_LOCAL_PLAYLISTS, JSON.stringify(others))
   localStorage.setItem(K_PLAYLIST_SONGS, JSON.stringify(songsMap))
-  genMeta[period] = key
-  localStorage.setItem(K_WEEKLY_PLAYLISTS, JSON.stringify(genMeta))
+  // 仅当本期确实生成了至少一个歌单时才记录「已生成」；
+  // 否则不写 genMeta，使下次启动（列表就绪后）仍会重试生成
+  if (top.length || discovery.length) {
+    genMeta[period] = key
+    localStorage.setItem(K_WEEKLY_PLAYLISTS, JSON.stringify(genMeta))
+  }
   return true
 }
 
 // 检查并生成 周/月/年 三类自动歌单（各自独立）
 // force=true 时强制重新生成（用于开关开启瞬间的数据更新/覆盖）
 export function checkAndGenerateAuto(songList, force = false) {
-  if (!isWeeklyEnabled()) return null
+  const enabled = isWeeklyEnabled()
+  console.log(`[auto-playlist] start enabled=${enabled} songs=${songList ? songList.length : 0} force=${force}`)
+  if (!enabled) return null
   if (!songList || !songList.length) return null
   for (const period of PERIODS) {
-    try { generateForPeriod(songList, period, force) } catch (e) { console.error('[auto-playlist] failed', period, e) }
+    try {
+      const r = generateForPeriod(songList, period, force)
+      console.log(`[auto-playlist] ${period} -> ${r === null ? 'skipped' : 'ok'}`)
+    } catch (e) { console.error('[auto-playlist] failed', period, e) }
   }
   return true
 }
@@ -104,5 +115,6 @@ export const checkAndGenerateWeekly = checkAndGenerateAuto
 // 是否为自动歌单（带任一周期前缀）
 export function isAutoPlaylistId(localId) {
   if (!localId) return false
-  return PERIODS.some(p => localId.startsWith(PERIOD_META[p].topPrefix) || localId.startsWith(PERIOD_META[p].discPrefix))
+  const id = String(localId)
+  return PERIODS.some(p => id.startsWith(PERIOD_META[p].topPrefix) || id.startsWith(PERIOD_META[p].discPrefix))
 }
