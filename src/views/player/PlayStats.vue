@@ -201,8 +201,6 @@ onMounted(() => {
   height: 48px; display: flex; align-items: center; padding: 0 12px;
   border-bottom: 1px solid var(--border-color);
   position: relative; z-index: 0;
-  content-visibility: auto;
-  contain-intrinsic-size: auto 48px;
 }
 .song-item::before {
   content: ''; position: absolute; inset: 0; z-index: -1;

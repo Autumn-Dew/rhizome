@@ -280,8 +280,6 @@ onMounted(() => {
   border-bottom: 1px solid var(--border-color);
   position: relative;
   z-index: 0;
-  content-visibility: auto;
-  contain-intrinsic-size: auto 48px;
 }
 
 .song-item::before {

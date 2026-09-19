@@ -211,8 +211,6 @@ onMounted(async () => { if (!localMusicStore.loaded && !localMusicStore.loading)
   height: 52px; display: flex; align-items: center;
   padding: 0 12px; border-bottom: 1px solid var(--border-color);
   position: relative; z-index: 0;
-  content-visibility: auto;
-  contain-intrinsic-size: auto 52px;
 }
 .song-item::before {
   content: ''; position: absolute; inset: 0; z-index: -1;
@@ -470,33 +468,7 @@ html[data-motion="ornate"] .detail-header::before {
 }
 html[data-motion="ornate"] .entered .detail-header::before { opacity: 0.5; }
 
-/* 标题两侧对称点缀（与设置页一致：3 圆点 + 双短线 + 双小弧） */
-html[data-motion="ornate"] .detail-header .playlist-text h2::before,
-html[data-motion="ornate"] .detail-header .playlist-text h2::after {
-  content: '';
-  display: inline-block;
-  width: 92px; height: 14px;
-  vertical-align: middle;
-  margin: 0 14px;
-  opacity: 0;
-  transform: scaleX(0);
-  transform-origin: center;
-  background:
-    radial-gradient(circle, var(--border-color) 2px, transparent 2.5px) left center / 6px 6px no-repeat,
-    radial-gradient(circle, var(--border-color) 2px, transparent 2.5px) center center / 6px 6px no-repeat,
-    radial-gradient(circle, var(--border-color) 2px, transparent 2.5px) right center / 6px 6px no-repeat,
-    linear-gradient(90deg, var(--border-color), var(--border-color)) left 3px / 28px 1px no-repeat,
-    linear-gradient(90deg, var(--border-color), var(--border-color)) right 4px / 28px 1px no-repeat,
-    conic-gradient(from 200deg, var(--border-color) 0 50deg, transparent 50deg 360deg) 30px center / 12px 12px no-repeat,
-    conic-gradient(from 110deg, var(--border-color) 0 50deg, transparent 50deg 360deg) calc(100% - 30px) center / 12px 12px no-repeat;
-  transition: opacity 0.8s var(--motion-easing-standard) 0.4s,
-              transform 0.8s var(--motion-easing-enter) 0.4s;
-}
-html[data-motion="ornate"] .entered .detail-header .playlist-text h2::before,
-html[data-motion="ornate"] .entered .detail-header .playlist-text h2::after {
-  opacity: 0.75;
-  transform: scaleX(1);
-}
+
 @keyframes ad-lace {
   0%   { background-position: 0 0, 0 100%, 0 0, 100% 0, 12px 20%, 12px 50%, 12px 80%; }
   100% { background-position: 7px 0, -7px 100%, 0 -7px, 100% 7px, 12px 20%, 12px 50%, 12px 80%; }
